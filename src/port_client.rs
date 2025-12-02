@@ -89,7 +89,7 @@ impl RbkPortClient {
 
         if let Some(ref mut conn) = state.connection {
             conn.stream.write_all(&request_bytes).await.map_err(|e| {
-                error!("Write error: {}", e);
+                error!("Write error for API {}: {}", api_no, e.kind());
                 RbkError::WriteError(e.to_string())
             })?;
         }
