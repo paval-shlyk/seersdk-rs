@@ -13,6 +13,7 @@
 /// - Kernel APIs (7000-7999): Kernel operations on port 19208
 /// - Misc APIs (6000-6998): Miscellaneous operations on port 19210
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u16)]
 pub enum ApiRequest {
     /// State module APIs (1000-1999)
     State(StateApi),
@@ -31,213 +32,143 @@ pub enum ApiRequest {
 impl ApiRequest {
     /// Get the API number for this request
     pub fn api_no(&self) -> u16 {
-        match self {
-            ApiRequest::State(api) => api.api_no(),
-            ApiRequest::Control(api) => api.api_no(),
-            ApiRequest::Nav(api) => api.api_no(),
-            ApiRequest::Config(api) => api.api_no(),
-            ApiRequest::Kernel(api) => api.api_no(),
-            ApiRequest::Misc(api) => api.api_no(),
+        match *self {
+            ApiRequest::State(api) => api as u16,
+            ApiRequest::Control(api) => api as u16,
+            ApiRequest::Nav(api) => api as u16,
+            ApiRequest::Config(api) => api as u16,
+            ApiRequest::Kernel(api) => api as u16,
+            ApiRequest::Misc(api) => api as u16,
         }
     }
 }
 
-/// State module APIs (1000-1999)
-///
-/// These APIs query the robot's current state and status information.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u16)]
 pub enum StateApi {
-    /// Query robot battery level (API 1007)
-    QueryBattery,
-    /// Query robot pose and position (API 1004)
-    QueryPose,
-    /// Query robot speed (API 1005)
-    QuerySpeed,
-    /// Query robot status (API 1001)
-    QueryStatus,
-    /// Custom state API with explicit API number (must be in range 1000-1999)
-    Custom(u16),
+    /// Query robot information
+    RobotInfo = 1000,
+    /// Query the operating status information of the robot (such as running time, mileage, etc.)
+    RobotRunStatus = 1002,
+    /// Query the operating mode of the robot
+    RobotMode = 1003,
+    /// Query the location of the robot
+    RobotLocation = 1004,
+    /// Query robot speed
+    RobotSpeed = 1005,
+    /// Query the blocked status of the robot
+    RobotBlockStatus = 1006,
+    /// Check the status of the robot battery
+    RobotBatteryStatus = 1007,
+    /// Check the status of the robot brake
+    RobotBrakeStatus = 1008,
+    /// Query robot lidar data
+    RobotLidarData = 1009,
+    /// Query robot path data
+    RobotPathData = 1010,
+    /// Query the current area of the robot
+    RobotCurrentArea = 1011,
+    /// Query the emergency stop status of the robot
+    RobotEmergencyStatus = 1012,
+    /// Query robot IO data
+    RobotIOData = 1013,
+    /// Query the status of the robot task, the task site,Task-related paths, etc.
+    RobotTaskStatus = 1020,
+    /// Query the relocation status of the robot
+    RobotRelocationStatus = 1021,
+    /// Query the loading status of the robot map
+    RobotLoadMapStatus = 1022,
+    /// Query the status of the robot scanning pictures
+    RobotSlamStatus = 1025,
+    /// Query the alarm status of the robot
+    RobotAlarmStatus = 1050,
+    /// Query batch data 1
+    RobotAllStatus1 = 1100,
+    /// Query batch data 2
+    RobotAllStatus2 = 1101,
+    /// Query batch data 3
+    RobotAllStatus3 = 1102,
+    /// Query the initialization status of the robot
+    RobotInitStatus = 1111,
+    /// Query the maps loaded by the robot and the stored maps
+    RobotMapInfo = 1300,
+    /// Query robot parameters
+    RobotParams = 1400,
 }
 
-impl StateApi {
-    pub fn api_no(&self) -> u16 {
-        match self {
-            StateApi::QueryBattery => 1007,
-            StateApi::QueryPose => 1004,
-            StateApi::QuerySpeed => 1005,
-            StateApi::QueryStatus => 1001,
-            StateApi::Custom(no) => {
-                debug_assert!(
-                    (1000..=1999).contains(no),
-                    "Custom State API number {} is outside valid range 1000-1999",
-                    no
-                );
-                *no
-            }
-        }
-    }
-}
-
-/// Control module APIs (2000-2999)
-///
-/// These APIs control robot movement and behavior.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u16)]
 pub enum ControlApi {
-    /// Set robot speed (API 2001)
-    SetSpeed,
-    /// Stop robot (API 2002)
-    Stop,
-    /// Custom control API with explicit API number (must be in range 2000-2999)
-    Custom(u16),
+    /// Start exercising
+    StartExercise = 2000,
+    /// Stop exercising
+    StopExercise = 2001,
+    /// Calibrate the gyroscope
+    GyroCalibrate = 2002,
+    /// Relocate
+    Relocate = 2003,
+    /// Confirm that the positioning is correct
+    ConfirmLocation = 2004,
+    /// Open loop movement
+    OpenLoopMotion = 2010,
+    /// Start scanning the map
+    StartSlam = 2020,
+    /// Stop scanning the map
+    StopSlam = 2021,
+    /// Switch loaded maps
+    SwitchMap = 2022,
+    /// Reload elements in the map
+    ReloadMapObjects = 2023,
 }
 
-impl ControlApi {
-    pub fn api_no(&self) -> u16 {
-        match self {
-            ControlApi::SetSpeed => 2001,
-            ControlApi::Stop => 2002,
-            ControlApi::Custom(no) => {
-                debug_assert!(
-                    (2000..=2999).contains(no),
-                    "Custom Control API number {} is outside valid range 2000-2999",
-                    no
-                );
-                *no
-            }
-        }
-    }
-}
-
-/// Navigation module APIs (3000-3999)
-///
-/// These APIs manage robot navigation and path planning.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u16)]
 pub enum NavApi {
-    /// Start navigation (API 3001)
-    StartNav,
-    /// Stop navigation (API 3002)
-    StopNav,
-    /// Pause navigation (API 3003)
-    PauseNav,
-    /// Resume navigation (API 3004)
-    ResumeNav,
-    /// Custom navigation API with explicit API number (must be in range 3000-3999)
-    Custom(u16),
+    /// Pause the current task
+    PausTask = 3001,
+    /// Resume the current task
+    ResumeTask = 3002,
+    /// Cancel the current task
+    CancelTask = 3003,
+    /// Free navigation (freely plan path navigation based on coordinate values or sites on the
+    /// map)
+    MoveToPoint = 3050,
+    /// Fixed path navigation (based on the site on the map and fixed path navigation)
+    MoveToTarget = 3051,
+    /// Inspection (set the route for fixed path navigation)
+    Patrol = 3052,
+    /// Flat motion, linear motion at a fixed speed and a fixed distance
+    Translate = 3055,
+    /// Rotate, rotate at a fixed angle at a fixed angular velocity
+    Turn = 3056,
 }
 
-impl NavApi {
-    pub fn api_no(&self) -> u16 {
-        match self {
-            NavApi::StartNav => 3001,
-            NavApi::StopNav => 3002,
-            NavApi::PauseNav => 3003,
-            NavApi::ResumeNav => 3004,
-            NavApi::Custom(no) => {
-                debug_assert!(
-                    (3000..=3999).contains(no),
-                    "Custom Nav API number {} is outside valid range 3000-3999",
-                    no
-                );
-                *no
-            }
-        }
-    }
-}
-
-/// Config module APIs (4000-5999)
-///
-/// These APIs manage robot configuration settings.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u16)]
 pub enum ConfigApi {
-    /// Get configuration (API 4001)
-    GetConfig,
-    /// Set configuration (API 4002)
-    SetConfig,
-    /// Custom config API with explicit API number (must be in range 4000-5999)
-    Custom(u16),
+    /// Switch operating mode (manual, automatic)
+    SwitchMode = 4000,
+    /// Set configuration parameters
+    SetConfig = 4001,
+    /// Set and save configuration parameters
+    SaveConfig = 4002,
+    /// Load configuration parameters
+    ReloadConfig = 4003,
 }
 
-impl ConfigApi {
-    pub fn api_no(&self) -> u16 {
-        match self {
-            ConfigApi::GetConfig => 4001,
-            ConfigApi::SetConfig => 4002,
-            ConfigApi::Custom(no) => {
-                debug_assert!(
-                    (4000..=5999).contains(no),
-                    "Custom Config API number {} is outside valid range 4000-5999",
-                    no
-                );
-                *no
-            }
-        }
-    }
-}
-
-/// Kernel module APIs (7000-7999)
-///
-/// These APIs interact with the robot's kernel layer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u16)]
 pub enum KernelApi {
-    /// Custom kernel API with explicit API number (must be in range 7000-7999)
-    Custom(u16),
+    /// Turn off the robot, the robot will lose power and lose control
+    Shutdown = 5000,
+    /// Restart the robot, the connection will be disconnected during the restart
+    Reboot = 5003,
+    /// Reset the robot firmware
+    ResetFirmware = 5005,
 }
 
-impl KernelApi {
-    pub fn api_no(&self) -> u16 {
-        match self {
-            KernelApi::Custom(no) => {
-                debug_assert!(
-                    (7000..=7999).contains(no),
-                    "Custom Kernel API number {} is outside valid range 7000-7999",
-                    no
-                );
-                *no
-            }
-        }
-    }
-}
-
-/// Misc module APIs (6000-6998)
-///
-/// These APIs provide miscellaneous functionality.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u16)]
 pub enum MiscApi {
-    /// Custom misc API with explicit API number (must be in range 6000-6998)
-    Custom(u16),
-}
-
-impl MiscApi {
-    pub fn api_no(&self) -> u16 {
-        match self {
-            MiscApi::Custom(no) => {
-                debug_assert!(
-                    (6000..=6998).contains(no),
-                    "Custom Misc API number {} is outside valid range 6000-6998",
-                    no
-                );
-                *no
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_api_numbers() {
-        assert_eq!(ApiRequest::State(StateApi::QueryBattery).api_no(), 1007);
-        assert_eq!(ApiRequest::State(StateApi::QueryPose).api_no(), 1004);
-        assert_eq!(ApiRequest::Control(ControlApi::SetSpeed).api_no(), 2001);
-        assert_eq!(ApiRequest::Nav(NavApi::StartNav).api_no(), 3001);
-        assert_eq!(ApiRequest::Config(ConfigApi::GetConfig).api_no(), 4001);
-    }
-
-    #[test]
-    fn test_custom_apis() {
-        assert_eq!(ApiRequest::State(StateApi::Custom(1999)).api_no(), 1999);
-        assert_eq!(ApiRequest::Control(ControlApi::Custom(2500)).api_no(), 2500);
-    }
+    Speaker = 6000,
 }
