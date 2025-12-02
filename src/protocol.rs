@@ -93,6 +93,7 @@ impl RbkDecoder {
             // Reset state for next frame
             self.started = false;
             self.flow_no = 0;
+            self.api_no = 0;
             self.body_size = -1;
 
             return Some(frame);

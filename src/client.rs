@@ -80,11 +80,6 @@ impl RbkClient {
         timeout_ms: u64,
     ) -> RbkResult<RbkRequestResult> {
         let timeout_ms = if timeout_ms == 0 { 10000 } else { timeout_ms };
-        let request_str = if request_str.is_empty() {
-            ""
-        } else {
-            request_str
-        };
 
         match api_no {
             1000..=1999 => self.state_client.request(api_no, request_str, timeout_ms).await,

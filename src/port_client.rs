@@ -94,6 +94,17 @@ impl RbkPortClient {
         let flow_no = state.next_flow_no();
         let notify = state.notify.clone();
 
+        // Validate API number fits in u16
+        if api_no < 0 || api_no > 65535 {
+            return Ok(RbkRequestResult::new(
+                RbkResultKind::BadApiNo,
+                self.host.clone(),
+                api_no,
+                req_str.to_string(),
+            )
+            .with_error(format!("API number {} out of valid range", api_no)));
+        }
+
         // Encode and send request
         let request_bytes = encode_request(api_no as u16, req_str, flow_no);
 
@@ -180,12 +191,16 @@ impl RbkPortClient {
             // Get a mutable reference to the stream
             let mut stream_guard = state.lock().await;
             
-            if stream_guard.connection.is_none() {
+            let has_connection = stream_guard.connection.is_some();
+            if !has_connection {
                 break;
             }
             
             // Take ownership of the stream temporarily
-            let mut conn = stream_guard.connection.take().unwrap();
+            let mut conn = match stream_guard.connection.take() {
+                Some(c) => c,
+                None => break,
+            };
             drop(stream_guard);
 
             // Read from stream without holding the lock
