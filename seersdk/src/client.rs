@@ -100,6 +100,7 @@ impl RbkClient {
             timeout
         };
 
+
         let api_no = api.api_no();
 
         match api {

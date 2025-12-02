@@ -90,7 +90,6 @@ pub enum ErrorCode {
     RelocStatusError = 41002,
 }
 
-pub trait FromResponse: Sized {
-    type Error: std::error::Error;
-    fn from_response(response: &str) -> Result<Self, Self::Error>;
+pub trait FromResponseBody: Sized {
+    type Response: serde::de::DeserializeOwned;
 }

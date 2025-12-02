@@ -3,6 +3,12 @@
 //! This module defines the API request enum that categorizes all RBK APIs
 //! into their respective modules based on the RBK protocol specification.
 
+mod request;
+mod response;
+
+pub use request::*;
+pub use response::*;
+
 /// API request enum representing all RBK robot APIs
 ///
 /// The RBK protocol organizes APIs into modules, each with its own port:
@@ -42,6 +48,47 @@ impl ApiRequest {
         }
     }
 }
+
+//generate documetation and dto types
+//impl_api_request!(RobotInfoRequest, ApiRequest::State(RobotInfo), res: StatusMessage)
+macro_rules! impl_api_request {
+    ($req_type:ident, $api_variant:expr, $(req: $req_body:expr,)? res: $res_type:ty) => {
+        #[derive(Debug, Clone)]
+        pub struct $req_type {
+            $(
+                pub req_body: String,
+            )?
+        }
+
+        impl $req_type {
+            pub fn new($(req_body: impl ToString,)?) -> Self {
+                Self {
+                    $(
+                        req_body: req_body.to_string(),
+                    )?
+                }
+            }
+        }
+
+        impl $crate::api::ToRequestBody for $req_type {
+            fn to_request_body(&self) -> String {
+                $(
+                    self.req_body.clone()
+                )?
+            }
+
+            fn to_api_request(&self) -> ApiRequest {
+                $api_variant
+            }
+        }
+
+        impl $crate::api::FromResponseBody for $req_type {
+            type Response = $res_type;
+        }
+    };
+}
+
+impl_api_request!(RobotInfoRequest, ApiRequest::State(StateApi::RobotInfo), res: StatusMessage);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
