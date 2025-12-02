@@ -3,7 +3,7 @@ pub struct StatusMessage {
     #[serde(
         rename = "ret_code",
         serialize_with = "error_code_serialize",
-        deserialize_with = "error_code_deserialize",
+        deserialize_with = "error_code_deserialize"
     )]
     pub code: ErrorCode,
     #[serde(rename = "err_msg", default)]
@@ -33,7 +33,16 @@ where
     ErrorCode::try_from(code).map_err(serde::de::Error::custom)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, num_enum::TryFromPrimitive)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    serde::Serialize,
+    serde::Deserialize,
+    num_enum::TryFromPrimitive,
+)]
 #[repr(u32)]
 pub enum ErrorCode {
     Unavailable = 40000,
@@ -81,4 +90,7 @@ pub enum ErrorCode {
     RelocStatusError = 41002,
 }
 
-pub trait 
+pub trait FromResponse: Sized {
+    type Error: std::error::Error;
+    fn from_response(response: &str) -> Result<Self, Self::Error>;
+}
