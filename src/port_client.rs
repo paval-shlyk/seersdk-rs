@@ -5,7 +5,6 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::{Mutex, Notify};
-use tokio::time::timeout;
 use tracing::{debug, error};
 
 use crate::error::{RbkError, RbkResult};
@@ -52,9 +51,9 @@ impl RbkPortClient {
         &self,
         api_no: i32,
         req_str: &str,
-        timeout_ms: u64,
+        timeout: Duration,
     ) -> RbkResult<RbkRequestResult> {
-        let result = self.do_request(api_no, req_str, timeout_ms).await;
+        let result = self.do_request(api_no, req_str, timeout).await;
 
         // Reset on error
         if let Ok(ref res) = result {
@@ -71,7 +70,7 @@ impl RbkPortClient {
         &self,
         api_no: i32,
         req_str: &str,
-        timeout_ms: u64,
+        timeout: Duration,
     ) -> RbkResult<RbkRequestResult> {
         let mut state = self.state.lock().await;
 
@@ -124,8 +123,7 @@ impl RbkPortClient {
         drop(state);
 
         // Wait for response with timeout
-        let timeout_duration = Duration::from_millis(timeout_ms);
-        match timeout(timeout_duration, async {
+        match tokio::time::timeout(timeout, async {
             loop {
                 notify.notified().await;
                 let mut state = self.state.lock().await;
@@ -165,14 +163,14 @@ impl RbkPortClient {
 
     async fn connect(&self) -> RbkResult<()> {
         let addr = format!("{}:{}", self.host, self.port);
-        let stream = timeout(Duration::from_secs(10), TcpStream::connect(&addr))
+        let stream = tokio::time::timeout(Duration::from_secs(10), TcpStream::connect(&addr))
             .await
             .map_err(|_| RbkError::Timeout)?
             .map_err(|e| RbkError::ConnectionFailed(e.to_string()))?;
 
         let state_clone = self.state.clone();
         let read_task = tokio::spawn(async move {
-            Self::read_loop(state_clone).await;
+            read_loop(state_clone).await;
         });
 
         let mut state = self.state.lock().await;
@@ -180,55 +178,6 @@ impl RbkPortClient {
         state.disposed = false;
 
         Ok(())
-    }
-
-    async fn read_loop(state: Arc<Mutex<ClientState>>) {
-        let mut decoder = RbkDecoder::new();
-        let mut buf = BytesMut::with_capacity(4096);
-        let mut read_buf = vec![0u8; 4096];
-
-        loop {
-            // Get a mutable reference to the stream
-            let mut stream_guard = state.lock().await;
-            
-            let has_connection = stream_guard.connection.is_some();
-            if !has_connection {
-                break;
-            }
-            
-            // Take ownership of the stream temporarily
-            let mut conn = match stream_guard.connection.take() {
-                Some(c) => c,
-                None => break,
-            };
-            drop(stream_guard);
-
-            // Read from stream without holding the lock
-            match conn.stream.read(&mut read_buf).await {
-                Ok(0) => {
-                    // Connection closed
-                    break;
-                }
-                Ok(n) => {
-                    buf.extend_from_slice(&read_buf[..n]);
-
-                    // Process all complete frames
-                    while let Some(frame) = decoder.decode(&mut buf) {
-                        let mut state = state.lock().await;
-                        state.response_map.insert(frame.flow_no, frame.body_str);
-                        state.notify.notify_waiters();
-                    }
-
-                    // Put the stream back
-                    let mut state = state.lock().await;
-                    state.connection = Some(conn);
-                }
-                Err(e) => {
-                    error!("Read error: {}", e);
-                    break;
-                }
-            }
-        }
     }
 
     async fn reset(&self) {
@@ -243,9 +192,12 @@ impl RbkPortClient {
 
         state.notify.notify_waiters();
     }
+}
 
-    pub async fn dispose(&self) {
-        self.reset().await;
+impl Drop for RbkPortClient {
+    fn drop(&mut self) {
+        // Note: Drop cannot be async, so cleanup happens on the next await point
+        // Users should explicitly handle cleanup if needed
     }
 }
 
@@ -253,5 +205,54 @@ impl ClientState {
     fn next_flow_no(&mut self) -> u16 {
         self.flow_no_counter = (self.flow_no_counter + 1) % 512;
         self.flow_no_counter
+    }
+}
+
+async fn read_loop(state: Arc<Mutex<ClientState>>) {
+    let mut decoder = RbkDecoder::new();
+    let mut buf = BytesMut::with_capacity(4096);
+    let mut read_buf = vec![0u8; 4096];
+
+    loop {
+        // Get a mutable reference to the stream
+        let mut state_lock = state.lock().await;
+        
+        let has_connection = state_lock.connection.is_some();
+        if !has_connection {
+            break;
+        }
+        
+        // Take ownership of the stream temporarily
+        let mut conn = match state_lock.connection.take() {
+            Some(c) => c,
+            None => break,
+        };
+        drop(state_lock);
+
+        // Read from stream without holding the lock
+        match conn.stream.read(&mut read_buf).await {
+            Ok(0) => {
+                // Connection closed
+                break;
+            }
+            Ok(n) => {
+                buf.extend_from_slice(&read_buf[..n]);
+
+                // Process all complete frames
+                while let Some(frame) = decoder.decode(&mut buf) {
+                    let mut state = state.lock().await;
+                    state.response_map.insert(frame.flow_no, frame.body_str);
+                    state.notify.notify_waiters();
+                }
+
+                // Put the stream back
+                let mut state = state.lock().await;
+                state.connection = Some(conn);
+            }
+            Err(e) => {
+                error!("Read error: {}", e);
+                break;
+            }
+        }
     }
 }

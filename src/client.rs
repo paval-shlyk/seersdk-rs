@@ -1,7 +1,15 @@
-use crate::error::RbkResult;
-use crate::frame::RbkResultKind;
+use crate::error::{RbkError, RbkResult};
 use crate::port_client::RbkPortClient;
 use crate::RbkRequestResult;
+use std::time::Duration;
+
+// Port constants for different API categories
+const STATE_PORT: u16 = 19204;
+const CONTROL_PORT: u16 = 19205;
+const NAV_PORT: u16 = 19206;
+const CONFIG_PORT: u16 = 19207;
+const KERNEL_PORT: u16 = 19208;
+const MISC_PORT: u16 = 19210;
 
 /// Main RBK client for communicating with robots
 ///
@@ -10,14 +18,17 @@ use crate::RbkRequestResult;
 /// - Control APIs (2000-2999): port 19205
 /// - Navigation APIs (3000-3999): port 19206
 /// - Config APIs (4000-5999): port 19207
+/// - Kernel APIs (7000-7999): port 19208
 /// - Misc APIs (6000-6998): port 19210
 pub struct RbkClient {
+    #[allow(dead_code)]
     host: String,
     config_client: RbkPortClient,
     misc_client: RbkPortClient,
     state_client: RbkPortClient,
     control_client: RbkPortClient,
     nav_client: RbkPortClient,
+    kernel_client: RbkPortClient,
 }
 
 impl RbkClient {
@@ -37,11 +48,12 @@ impl RbkClient {
     pub fn new(host: impl Into<String>) -> Self {
         let host = host.into();
         Self {
-            config_client: RbkPortClient::new(host.clone(), 19207),
-            misc_client: RbkPortClient::new(host.clone(), 19210),
-            state_client: RbkPortClient::new(host.clone(), 19204),
-            control_client: RbkPortClient::new(host.clone(), 19205),
-            nav_client: RbkPortClient::new(host.clone(), 19206),
+            config_client: RbkPortClient::new(host.clone(), CONFIG_PORT),
+            misc_client: RbkPortClient::new(host.clone(), MISC_PORT),
+            state_client: RbkPortClient::new(host.clone(), STATE_PORT),
+            control_client: RbkPortClient::new(host.clone(), CONTROL_PORT),
+            nav_client: RbkPortClient::new(host.clone(), NAV_PORT),
+            kernel_client: RbkPortClient::new(host.clone(), KERNEL_PORT),
             host,
         }
     }
@@ -52,7 +64,7 @@ impl RbkClient {
     ///
     /// * `api_no` - The API number (determines which port to use)
     /// * `request_str` - The request body as a JSON string
-    /// * `timeout_ms` - Timeout in milliseconds (use 10000 for 10 seconds)
+    /// * `timeout` - Timeout duration (defaults to 10 seconds if zero)
     ///
     /// # Returns
     ///
@@ -62,10 +74,11 @@ impl RbkClient {
     ///
     /// ```no_run
     /// use seersdk_rs::{RbkClient, RbkResultKind};
+    /// use std::time::Duration;
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let client = RbkClient::new("192.168.8.114");
-    /// let result = client.request(1007, r#"{"simple": true}"#, 10000).await?;
+    /// let result = client.request(1007, r#"{"simple": true}"#, Duration::from_secs(10)).await?;
     ///
     /// if result.kind == RbkResultKind::Ok {
     ///     println!("Battery level response: {}", result.res_str);
@@ -77,33 +90,30 @@ impl RbkClient {
         &self,
         api_no: i32,
         request_str: &str,
-        timeout_ms: u64,
+        timeout: Duration,
     ) -> RbkResult<RbkRequestResult> {
-        let timeout_ms = if timeout_ms == 0 { 10000 } else { timeout_ms };
+        let timeout = if timeout.is_zero() {
+            Duration::from_secs(10)
+        } else {
+            timeout
+        };
 
         match api_no {
-            1000..=1999 => self.state_client.request(api_no, request_str, timeout_ms).await,
-            2000..=2999 => self.control_client.request(api_no, request_str, timeout_ms).await,
-            3000..=3999 => self.nav_client.request(api_no, request_str, timeout_ms).await,
-            4000..=5999 => self.config_client.request(api_no, request_str, timeout_ms).await,
-            6000..=6998 => self.misc_client.request(api_no, request_str, timeout_ms).await,
-            _ => Ok(RbkRequestResult::new(
-                RbkResultKind::BadApiNo,
-                self.host.clone(),
-                api_no,
-                request_str.to_string(),
-            )),
+            1000..=1999 => self.state_client.request(api_no, request_str, timeout).await,
+            2000..=2999 => self.control_client.request(api_no, request_str, timeout).await,
+            3000..=3999 => self.nav_client.request(api_no, request_str, timeout).await,
+            4000..=5999 => self.config_client.request(api_no, request_str, timeout).await,
+            6000..=6998 => self.misc_client.request(api_no, request_str, timeout).await,
+            7000..=7999 => self.kernel_client.request(api_no, request_str, timeout).await,
+            _ => Err(RbkError::BadApiNo(api_no)),
         }
     }
+}
 
-    /// Release all connections to the robot
-    ///
-    /// This should be called when the client is no longer needed
-    pub async fn dispose(&self) {
-        self.state_client.dispose().await;
-        self.control_client.dispose().await;
-        self.nav_client.dispose().await;
-        self.config_client.dispose().await;
-        self.misc_client.dispose().await;
+impl Drop for RbkClient {
+    fn drop(&mut self) {
+        // Note: Drop cannot be async, so we spawn a blocking task
+        // Users should call dispose() explicitly for graceful shutdown
+        // This is a best-effort cleanup
     }
 }

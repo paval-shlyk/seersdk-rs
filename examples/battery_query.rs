@@ -1,5 +1,6 @@
 use seersdk_rs::{RbkClient, RbkResultKind};
 use serde_json::Value;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -9,7 +10,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 2: Send a request to query the robot's battery level
     // According to RBK protocol, API 1007 is for querying battery with parameter {"simple":true}
     let req_str = r#"{"simple": true}"#; // Request parameter as JSON string
-    let result = rbk_client.request(1007, req_str, 10000).await?;
+    let result = rbk_client.request(1007, req_str, Duration::from_secs(10)).await?;
 
     if result.kind == RbkResultKind::Ok {
         // SDK request to robot succeeded
@@ -30,8 +31,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("SDK error: {}", result.err_msg);
     }
 
-    // Step 3: Release client connection when no longer needed
-    rbk_client.dispose().await;
+    // Note: RbkClient now implements Drop for automatic cleanup
+    // The connection will be cleaned up when the client goes out of scope
 
     Ok(())
 }

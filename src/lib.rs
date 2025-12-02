@@ -6,12 +6,13 @@
 //!
 //! ```no_run
 //! use seersdk_rs::{RbkClient, RbkResultKind};
+//! use std::time::Duration;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     let client = RbkClient::new("192.168.8.114");
 //!     
-//!     let result = client.request(1007, r#"{"simple": true}"#, 10000).await?;
+//!     let result = client.request(1007, r#"{"simple": true}"#, Duration::from_secs(10)).await?;
 //!     
 //!     if result.kind == RbkResultKind::Ok {
 //!         println!("Response: {}", result.res_str);
