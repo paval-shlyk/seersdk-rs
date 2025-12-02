@@ -99,7 +99,9 @@ impl RbkClient {
         };
 
         let api = request.to_api_request();
-        let request_str = request.to_request_body();
+        let request_str = request
+            .to_request_body()
+            .map_err(|e| RbkError::ParseError(e.to_string()))?;
         let api_no = api.api_no();
 
         let response_str = match api {

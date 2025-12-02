@@ -49,11 +49,33 @@ impl ApiRequest {
     }
 }
 
-//generate documetation and dto types
-//impl_api_request!(RobotInfoRequest, ApiRequest::State(RobotInfo), res: StatusMessage)
+/// Macro to generate request DTO types for RBK robot APIs
+///
+/// This macro creates a request type with associated traits for serialization and response handling.
+///
+/// # Patterns
+///
+/// 1. Request without payload (returns empty string):
+/// ```ignore
+/// impl_api_request!(RequestTypeName, ApiRequest::Module(ModuleApi::Variant), res: ResponseType);
+/// ```
+///
+/// 2. Request with payload (serializes payload to JSON):
+/// ```ignore
+/// impl_api_request!(RequestTypeName, ApiRequest::Module(ModuleApi::Variant), req: PayloadType, res: ResponseType);
+/// ```
+///
+/// # Arguments
+///
+/// * `$req_type` - Name of the request type to generate
+/// * `$api_variant` - The API variant expression (e.g., `ApiRequest::State(StateApi::RobotInfo)`)
+/// * `$req_body_type` - (Optional) Type of the request payload for requests that need a body
+/// * `$res_type` - Type of the response that will be returned
+/// * `$docs` - (Optional) Documentation string for the generated request type
 macro_rules! impl_api_request {
     // Pattern for requests without payload
-    ($req_type:ident, $api_variant:expr, res: $res_type:ty) => {
+    ($req_type:ident, $api_variant:expr, res: $res_type:ty $(, $docs:literal)?) => {
+        $(#[doc = $docs])?
         #[derive(Debug, Clone, Default)]
         pub struct $req_type;
 
@@ -64,8 +86,8 @@ macro_rules! impl_api_request {
         }
 
         impl $crate::api::ToRequestBody for $req_type {
-            fn to_request_body(&self) -> String {
-                String::new()
+            fn to_request_body(&self) -> Result<String, serde_json::Error> {
+                Ok(String::new())
             }
 
             fn to_api_request(&self) -> ApiRequest {
@@ -78,7 +100,8 @@ macro_rules! impl_api_request {
         }
     };
     // Pattern for requests with payload
-    ($req_type:ident, $api_variant:expr, req: $req_body_type:ty, res: $res_type:ty) => {
+    ($req_type:ident, $api_variant:expr, req: $req_body_type:ty, res: $res_type:ty $(, $docs:literal)?) => {
+        $(#[doc = $docs])?
         #[derive(Debug, Clone)]
         pub struct $req_type {
             pub req_body: $req_body_type,
@@ -91,8 +114,8 @@ macro_rules! impl_api_request {
         }
 
         impl $crate::api::ToRequestBody for $req_type {
-            fn to_request_body(&self) -> String {
-                serde_json::to_string(&self.req_body).unwrap_or_default()
+            fn to_request_body(&self) -> Result<String, serde_json::Error> {
+                serde_json::to_string(&self.req_body)
             }
 
             fn to_api_request(&self) -> ApiRequest {
