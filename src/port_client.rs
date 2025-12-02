@@ -8,9 +8,7 @@ use tokio::sync::{Mutex, Notify};
 use tracing::{debug, error};
 
 use crate::error::{RbkError, RbkResult};
-use crate::frame::RbkResultKind;
 use crate::protocol::{encode_request, RbkDecoder};
-use crate::RbkRequestResult;
 
 /// Client for a specific RBK port
 pub(crate) struct RbkPortClient {
@@ -49,18 +47,16 @@ impl RbkPortClient {
 
     pub async fn request(
         &self,
-        api_no: i32,
+        api_no: u16,
         req_str: &str,
         timeout: Duration,
-    ) -> RbkResult<RbkRequestResult> {
+    ) -> RbkResult<String> {
         let result = self.do_request(api_no, req_str, timeout).await;
 
         // Reset on error
-        if let Ok(ref res) = result {
-            if res.kind != RbkResultKind::Ok {
-                debug!("Request failed, resetting client: {:?}", res.kind);
-                self.reset().await;
-            }
+        if let Err(ref e) = result {
+            debug!("Request failed (API {}), resetting client: {:?}", api_no, e);
+            self.reset().await;
         }
 
         result
@@ -68,19 +64,14 @@ impl RbkPortClient {
 
     async fn do_request(
         &self,
-        api_no: i32,
+        api_no: u16,
         req_str: &str,
         timeout: Duration,
-    ) -> RbkResult<RbkRequestResult> {
+    ) -> RbkResult<String> {
         let mut state = self.state.lock().await;
 
         if state.disposed {
-            return Ok(RbkRequestResult::new(
-                RbkResultKind::Disposed,
-                self.host.clone(),
-                api_no,
-                req_str.to_string(),
-            ));
+            return Err(RbkError::Disposed);
         }
 
         // Ensure connection
@@ -93,72 +84,35 @@ impl RbkPortClient {
         let flow_no = state.next_flow_no();
         let notify = state.notify.clone();
 
-        // Validate API number fits in u16
-        if !(0..=65535).contains(&api_no) {
-            return Ok(RbkRequestResult::new(
-                RbkResultKind::BadApiNo,
-                self.host.clone(),
-                api_no,
-                req_str.to_string(),
-            )
-            .with_error(format!("API number {} out of valid range", api_no)));
-        }
-
         // Encode and send request
-        let request_bytes = encode_request(api_no as u16, req_str, flow_no);
+        let request_bytes = encode_request(api_no, req_str, flow_no);
 
         if let Some(ref mut conn) = state.connection {
-            if let Err(e) = conn.stream.write_all(&request_bytes).await {
-                error!("Write error: {}", e);
-                return Ok(RbkRequestResult::new(
-                    RbkResultKind::WriteError,
-                    self.host.clone(),
-                    api_no,
-                    req_str.to_string(),
-                )
-                .with_error(e.to_string()));
-            }
+            conn.stream.write_all(&request_bytes).await.map_err(|e| {
+                error!("Write error for API {}: {}", api_no, e.kind());
+                RbkError::WriteError(e.to_string())
+            })?;
         }
 
         drop(state);
 
         // Wait for response with timeout
-        match tokio::time::timeout(timeout, async {
+        tokio::time::timeout(timeout, async {
             loop {
                 notify.notified().await;
                 let mut state = self.state.lock().await;
 
                 if state.disposed {
-                    return RbkRequestResult::new(
-                        RbkResultKind::Disposed,
-                        self.host.clone(),
-                        api_no,
-                        req_str.to_string(),
-                    );
+                    return Err(RbkError::Disposed);
                 }
 
                 if let Some(res_str) = state.response_map.remove(&flow_no) {
-                    return RbkRequestResult::new(
-                        RbkResultKind::Ok,
-                        self.host.clone(),
-                        api_no,
-                        req_str.to_string(),
-                    )
-                    .with_response(res_str);
+                    return Ok(res_str);
                 }
             }
         })
         .await
-        {
-            Ok(result) => Ok(result),
-            Err(_) => Ok(RbkRequestResult::new(
-                RbkResultKind::Timeout,
-                self.host.clone(),
-                api_no,
-                req_str.to_string(),
-            )
-            .with_error("Timeout".to_string())),
-        }
+        .map_err(|_| RbkError::Timeout)?
     }
 
     async fn connect(&self) -> RbkResult<()> {

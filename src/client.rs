@@ -1,6 +1,6 @@
-use crate::error::{RbkError, RbkResult};
+use crate::api::ApiRequest;
+use crate::error::RbkResult;
 use crate::port_client::RbkPortClient;
-use crate::RbkRequestResult;
 use std::time::Duration;
 
 // Port constants for different API categories
@@ -62,70 +62,73 @@ impl RbkClient {
     ///
     /// # Arguments
     ///
-    /// * `api_no` - The API number (determines which port to use)
+    /// * `api` - The API request to send
     /// * `request_str` - The request body as a JSON string
     /// * `timeout` - Timeout duration (defaults to 10 seconds if zero)
     ///
     /// # Returns
     ///
-    /// Returns `RbkRequestResult` with the response or error information
+    /// Returns the response body as a String on success, or an RbkError on failure
     ///
     /// # Example
     ///
     /// ```no_run
-    /// use seersdk_rs::{RbkClient, RbkResultKind};
+    /// use seersdk_rs::{RbkClient, ApiRequest, StateApi};
     /// use std::time::Duration;
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let client = RbkClient::new("192.168.8.114");
-    /// let result = client.request(1007, r#"{"simple": true}"#, Duration::from_secs(10)).await?;
+    /// let response = client.request(
+    ///     ApiRequest::State(StateApi::QueryBattery),
+    ///     r#"{"simple": true}"#,
+    ///     Duration::from_secs(10)
+    /// ).await?;
     ///
-    /// if result.kind == RbkResultKind::Ok {
-    ///     println!("Battery level response: {}", result.res_str);
-    /// }
+    /// println!("Battery level response: {}", response);
     /// # Ok(())
     /// # }
     /// ```
     pub async fn request(
         &self,
-        api_no: i32,
+        api: ApiRequest,
         request_str: &str,
         timeout: Duration,
-    ) -> RbkResult<RbkRequestResult> {
+    ) -> RbkResult<String> {
         let timeout = if timeout.is_zero() {
             Duration::from_secs(10)
         } else {
             timeout
         };
 
-        match api_no {
-            1000..=1999 => {
+        let api_no = api.api_no();
+
+        match api {
+            ApiRequest::State(_) => {
                 self.state_client
                     .request(api_no, request_str, timeout)
                     .await
             }
-            2000..=2999 => {
+            ApiRequest::Control(_) => {
                 self.control_client
                     .request(api_no, request_str, timeout)
                     .await
             }
-            3000..=3999 => {
+            ApiRequest::Nav(_) => {
                 self.nav_client.request(api_no, request_str, timeout).await
             }
-            4000..=5999 => {
+            ApiRequest::Config(_) => {
                 self.config_client
                     .request(api_no, request_str, timeout)
                     .await
             }
-            6000..=6998 => {
+            ApiRequest::Misc(_) => {
                 self.misc_client.request(api_no, request_str, timeout).await
             }
-            7000..=7999 => {
+            ApiRequest::Kernel(_) => {
                 self.kernel_client
                     .request(api_no, request_str, timeout)
                     .await
             }
-            _ => Err(RbkError::BadApiNo(api_no)),
         }
     }
 }

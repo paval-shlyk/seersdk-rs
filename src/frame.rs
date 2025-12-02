@@ -1,24 +1,3 @@
-/// Result kind for RBK requests
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RbkResultKind {
-    /// Request succeeded
-    Ok,
-    /// Robot not found
-    NoSuchRobot,
-    /// Connection failed
-    ConnectFail,
-    /// Write error
-    WriteError,
-    /// Client disposed
-    Disposed,
-    /// Bad API number
-    BadApiNo,
-    /// Request timeout
-    Timeout,
-    /// Request interrupted
-    Interrupted,
-}
-
 /// Internal frame structure for RBK protocol
 #[derive(Debug, Clone)]
 pub struct RbkFrame {

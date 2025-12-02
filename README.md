@@ -5,7 +5,7 @@ A Rust client library for communicating with RBK robots via TCP.
 ## Features
 
 - Async/await support using Tokio
-- Type-safe API
+- Type-safe API with enum-based request types
 - Automatic connection management
 - Multiple port support for different API categories
 
@@ -21,7 +21,7 @@ seersdk-rs = "1.0.0"
 ## Usage
 
 ```rust
-use seersdk_rs::{RbkClient, RbkResultKind};
+use seersdk_rs::{RbkClient, ApiRequest, StateApi};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -29,17 +29,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = RbkClient::new("192.168.8.114");
     
     // Send a request to query the robot's battery level
-    // API 1007 queries battery with parameter {"simple":true}
-    let result = client.request(1007, r#"{"simple": true}"#, 10000).await?;
+    // API QueryBattery with parameter {"simple":true}
+    let response = client.request(
+        ApiRequest::State(StateApi::QueryBattery),
+        r#"{"simple": true}"#,
+        std::time::Duration::from_secs(10)
+    ).await?;
     
-    if result.kind == RbkResultKind::Ok {
-        println!("Response: {}", result.res_str);
-    } else {
-        println!("Error: {}", result.err_msg);
-    }
-    
-    // Release connection when done
-    client.dispose().await;
+    println!("Response: {}", response);
     
     Ok(())
 }
@@ -53,7 +50,36 @@ The RBK protocol uses different ports for different API categories:
 - **Control APIs** (2000-2999): port 19205 - Robot control commands
 - **Navigation APIs** (3000-3999): port 19206 - Navigation commands
 - **Config APIs** (4000-5999): port 19207 - Configuration management
+- **Kernel APIs** (7000-7999): port 19208 - Kernel operations
 - **Misc APIs** (6000-6998): port 19210 - Miscellaneous operations
+
+## API Request Types
+
+The SDK provides type-safe API requests through the `ApiRequest` enum:
+
+```rust
+// State APIs
+ApiRequest::State(StateApi::QueryBattery)  // API 1007
+ApiRequest::State(StateApi::QueryPose)     // API 1004
+ApiRequest::State(StateApi::QuerySpeed)    // API 1005
+ApiRequest::State(StateApi::QueryStatus)   // API 1001
+
+// Control APIs
+ApiRequest::Control(ControlApi::SetSpeed)  // API 2001
+ApiRequest::Control(ControlApi::Stop)      // API 2002
+
+// Navigation APIs
+ApiRequest::Nav(NavApi::StartNav)          // API 3001
+ApiRequest::Nav(NavApi::StopNav)           // API 3002
+
+// Config APIs
+ApiRequest::Config(ConfigApi::GetConfig)   // API 4001
+ApiRequest::Config(ConfigApi::SetConfig)   // API 4002
+
+// Custom APIs (for APIs not explicitly defined)
+ApiRequest::State(StateApi::Custom(1999))
+ApiRequest::Control(ControlApi::Custom(2500))
+```
 
 ## Examples
 
