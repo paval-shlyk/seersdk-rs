@@ -10,7 +10,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 2: Send a request to query the robot's battery level
     // According to RBK protocol, API 1007 is for querying battery with parameter {"simple":true}
     let req_str = r#"{"simple": true}"#; // Request parameter as JSON string
-    let result = rbk_client.request(1007, req_str, Duration::from_secs(10)).await?;
+    let result = rbk_client
+        .request(1007, req_str, Duration::from_secs(10))
+        .await?;
 
     if result.kind == RbkResultKind::Ok {
         // SDK request to robot succeeded
@@ -19,11 +21,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if res_json["ret_code"].as_i64() == Some(0) {
             // Robot returned success
-            let battery_level = res_json["battery_level"].as_f64().unwrap_or(0.0);
+            let battery_level =
+                res_json["battery_level"].as_f64().unwrap_or(0.0);
             println!("Battery level: {:.2}%", battery_level);
         } else {
             // Robot returned failure
-            let robot_err_msg = res_json["err_msg"].as_str().unwrap_or("Unknown error");
+            let robot_err_msg =
+                res_json["err_msg"].as_str().unwrap_or("Unknown error");
             println!("Robot error: {}", robot_err_msg);
         }
     } else {

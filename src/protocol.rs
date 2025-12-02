@@ -1,5 +1,5 @@
-use bytes::{Buf, BufMut, BytesMut};
 use crate::frame::RbkFrame;
+use bytes::{Buf, BufMut, BytesMut};
 
 // Protocol constants
 const START_MARK: u8 = 0x5A;
@@ -8,12 +8,16 @@ const HEAD_SIZE: usize = 16;
 const RESERVED: [u8; 6] = [0; 6];
 
 /// Encode an RBK request into bytes
-pub(crate) fn encode_request(api_no: u16, body_str: &str, flow_no: u16) -> BytesMut {
+pub(crate) fn encode_request(
+    api_no: u16,
+    body_str: &str,
+    flow_no: u16,
+) -> BytesMut {
     let body_bytes = body_str.as_bytes();
     let body_len = body_bytes.len() as u32;
-    
+
     let mut buf = BytesMut::with_capacity(HEAD_SIZE + body_bytes.len());
-    
+
     // Write header
     buf.put_u8(START_MARK);
     buf.put_u8(PROTO_VERSION);
@@ -21,10 +25,10 @@ pub(crate) fn encode_request(api_no: u16, body_str: &str, flow_no: u16) -> Bytes
     buf.put_u32(body_len);
     buf.put_u16(api_no);
     buf.put_slice(&RESERVED);
-    
+
     // Write body
     buf.put_slice(body_bytes);
-    
+
     buf
 }
 
@@ -68,7 +72,7 @@ impl RbkDecoder {
                 if buf.remaining() < 15 {
                     return None;
                 }
-                
+
                 let _version = buf.get_u8();
                 self.flow_no = buf.get_u16();
                 self.body_size = buf.get_u32() as i32;

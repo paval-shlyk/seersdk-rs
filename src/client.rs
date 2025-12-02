@@ -99,12 +99,32 @@ impl RbkClient {
         };
 
         match api_no {
-            1000..=1999 => self.state_client.request(api_no, request_str, timeout).await,
-            2000..=2999 => self.control_client.request(api_no, request_str, timeout).await,
-            3000..=3999 => self.nav_client.request(api_no, request_str, timeout).await,
-            4000..=5999 => self.config_client.request(api_no, request_str, timeout).await,
-            6000..=6998 => self.misc_client.request(api_no, request_str, timeout).await,
-            7000..=7999 => self.kernel_client.request(api_no, request_str, timeout).await,
+            1000..=1999 => {
+                self.state_client
+                    .request(api_no, request_str, timeout)
+                    .await
+            }
+            2000..=2999 => {
+                self.control_client
+                    .request(api_no, request_str, timeout)
+                    .await
+            }
+            3000..=3999 => {
+                self.nav_client.request(api_no, request_str, timeout).await
+            }
+            4000..=5999 => {
+                self.config_client
+                    .request(api_no, request_str, timeout)
+                    .await
+            }
+            6000..=6998 => {
+                self.misc_client.request(api_no, request_str, timeout).await
+            }
+            7000..=7999 => {
+                self.kernel_client
+                    .request(api_no, request_str, timeout)
+                    .await
+            }
             _ => Err(RbkError::BadApiNo(api_no)),
         }
     }

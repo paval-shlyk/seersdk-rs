@@ -163,10 +163,13 @@ impl RbkPortClient {
 
     async fn connect(&self) -> RbkResult<()> {
         let addr = format!("{}:{}", self.host, self.port);
-        let stream = tokio::time::timeout(Duration::from_secs(10), TcpStream::connect(&addr))
-            .await
-            .map_err(|_| RbkError::Timeout)?
-            .map_err(|e| RbkError::ConnectionFailed(e.to_string()))?;
+        let stream = tokio::time::timeout(
+            Duration::from_secs(10),
+            TcpStream::connect(&addr),
+        )
+        .await
+        .map_err(|_| RbkError::Timeout)?
+        .map_err(|e| RbkError::ConnectionFailed(e.to_string()))?;
 
         let state_clone = self.state.clone();
         let read_task = tokio::spawn(async move {
@@ -218,12 +221,12 @@ async fn read_loop(state: Arc<Mutex<ClientState>>) {
     loop {
         // Get a mutable reference to the stream
         let mut state_lock = state.lock().await;
-        
+
         let has_connection = state_lock.connection.is_some();
         if !has_connection {
             break;
         }
-        
+
         // Take ownership of the stream temporarily
         let mut conn = match state_lock.connection.take() {
             Some(c) => c,

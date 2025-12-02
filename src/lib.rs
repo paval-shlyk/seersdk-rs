@@ -50,7 +50,12 @@ pub struct RbkRequestResult {
 }
 
 impl RbkRequestResult {
-    pub(crate) fn new(kind: RbkResultKind, ip: String, api_no: i32, req_str: String) -> Self {
+    pub(crate) fn new(
+        kind: RbkResultKind,
+        ip: String,
+        api_no: i32,
+        req_str: String,
+    ) -> Self {
         Self {
             kind,
             ip,
