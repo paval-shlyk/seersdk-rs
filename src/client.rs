@@ -1,5 +1,5 @@
 use crate::api::ApiRequest;
-use crate::error::RbkResult;
+use crate::error::{RbkError, RbkResult};
 use crate::port_client::RbkPortClient;
 use std::time::Duration;
 
@@ -62,75 +62,81 @@ impl RbkClient {
     ///
     /// # Arguments
     ///
-    /// * `api` - The API request to send
-    /// * `request_str` - The request body as a JSON string
+    /// * `request` - A request object implementing `ToRequestBody` and `FromResponseBody` traits
     /// * `timeout` - Timeout duration (defaults to 10 seconds if zero)
     ///
     /// # Returns
     ///
-    /// Returns the response body as a String on success, or an RbkError on failure
+    /// Returns the deserialized response on success, or an RbkError on failure
     ///
     /// # Example
     ///
     /// ```no_run
-    /// use seersdk_rs::{RbkClient, ApiRequest, StateApi};
+    /// use seersdk_rs::{RbkClient, RobotBatteryStatusRequest};
     /// use std::time::Duration;
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let client = RbkClient::new("192.168.8.114");
-    /// let response = client.request(
-    ///     ApiRequest::State(StateApi::QueryBattery),
-    ///     r#"{"simple": true}"#,
-    ///     Duration::from_secs(10)
-    /// ).await?;
+    /// let request = RobotBatteryStatusRequest::new();
+    /// let response = client.request(request, Duration::from_secs(10)).await?;
     ///
-    /// println!("Battery level response: {}", response);
+    /// println!("Battery status response: {:?}", response);
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn request(
+    pub async fn request<T>(
         &self,
-        api: ApiRequest,
-        request_str: &str,
+        request: T,
         timeout: Duration,
-    ) -> RbkResult<String> {
+    ) -> RbkResult<T::Response>
+    where
+        T: crate::api::ToRequestBody + crate::api::FromResponseBody,
+    {
         let timeout = if timeout.is_zero() {
             Duration::from_secs(10)
         } else {
             timeout
         };
 
-
+        let api = request.to_api_request();
+        let request_str = request.to_request_body();
         let api_no = api.api_no();
 
-        match api {
+        let response_str = match api {
             ApiRequest::State(_) => {
                 self.state_client
-                    .request(api_no, request_str, timeout)
-                    .await
+                    .request(api_no, &request_str, timeout)
+                    .await?
             }
             ApiRequest::Control(_) => {
                 self.control_client
-                    .request(api_no, request_str, timeout)
-                    .await
+                    .request(api_no, &request_str, timeout)
+                    .await?
             }
             ApiRequest::Nav(_) => {
-                self.nav_client.request(api_no, request_str, timeout).await
+                self.nav_client
+                    .request(api_no, &request_str, timeout)
+                    .await?
             }
             ApiRequest::Config(_) => {
                 self.config_client
-                    .request(api_no, request_str, timeout)
-                    .await
+                    .request(api_no, &request_str, timeout)
+                    .await?
             }
             ApiRequest::Misc(_) => {
-                self.misc_client.request(api_no, request_str, timeout).await
+                self.misc_client
+                    .request(api_no, &request_str, timeout)
+                    .await?
             }
             ApiRequest::Kernel(_) => {
                 self.kernel_client
-                    .request(api_no, request_str, timeout)
-                    .await
+                    .request(api_no, &request_str, timeout)
+                    .await?
             }
-        }
+        };
+
+        serde_json::from_str(&response_str)
+            .map_err(|e| RbkError::ParseError(e.to_string()))
     }
 }
 

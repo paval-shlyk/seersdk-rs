@@ -5,20 +5,17 @@
 //! ## Example
 //!
 //! ```no_run
-//! use seersdk_rs::{RbkClient, ApiRequest, StateApi};
+//! use seersdk_rs::{RbkClient, RobotBatteryStatusRequest};
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     let client = RbkClient::new("192.168.8.114");
 //!     
-//!     let response = client.request(
-//!         ApiRequest::State(StateApi::QueryBattery),
-//!         r#"{"simple": true}"#,
-//!         Duration::from_secs(10)
-//!     ).await?;
+//!     let request = RobotBatteryStatusRequest::new();
+//!     let response = client.request(request, Duration::from_secs(10)).await?;
 //!     
-//!     println!("Response: {}", response);
+//!     println!("Response: {:?}", response);
 //!     
 //!     Ok(())
 //! }
