@@ -53,55 +53,58 @@ impl RbkDecoder {
     /// Try to decode a frame from the buffer
     /// Returns Some(RbkFrame) if a complete frame was decoded, None otherwise
     pub fn decode(&mut self, buf: &mut BytesMut) -> Option<RbkFrame> {
-        loop {
-            // Look for start marker
+        // Look for start marker
+        if !self.started {
+            while buf.has_remaining() {
+                if buf.get_u8() == START_MARK {
+                    self.started = true;
+                    break;
+                }
+            }
+
             if !self.started {
-                while buf.has_remaining() {
-                    if buf.get_u8() == START_MARK {
-                        self.started = true;
-                        break;
-                    }
-                }
-                if !self.started {
-                    return None;
-                }
+                return None;
             }
+        }
 
-            // Read header
-            if self.body_size < 0 {
-                if buf.remaining() < 15 {
-                    return None;
-                }
-
-                let _version = buf.get_u8();
-                self.flow_no = buf.get_u16();
-                self.body_size = buf.get_u32() as i32;
-                self.api_no = buf.get_u16();
-                buf.advance(6); // Skip reserved bytes
-            }
-
-            // Read body
-            if buf.remaining() < self.body_size as usize {
+        // Read header
+        if self.body_size < 0 {
+            if buf.remaining() < 15 {
                 return None;
             }
 
-            let body_str = if self.body_size == 0 {
-                String::new()
-            } else {
-                let body_bytes = buf.split_to(self.body_size as usize);
-                String::from_utf8_lossy(&body_bytes).to_string()
-            };
-
-            let frame = RbkFrame::new(self.flow_no, self.api_no, body_str);
-
-            // Reset state for next frame
-            self.started = false;
-            self.flow_no = 0;
-            self.api_no = 0;
-            self.body_size = -1;
-
-            return Some(frame);
+            let _version = buf.get_u8();
+            self.flow_no = buf.get_u16();
+            self.body_size = buf.get_u32() as i32;
+            self.api_no = buf.get_u16();
+            buf.advance(6); // Skip reserved bytes
         }
+
+        // Read body
+        if buf.remaining() < self.body_size as usize {
+            return None;
+        }
+
+        let body = if self.body_size == 0 {
+            String::new()
+        } else {
+            let body_bytes = buf.split_to(self.body_size as usize);
+            String::from_utf8_lossy(&body_bytes).to_string()
+        };
+
+        let frame = RbkFrame {
+            flow_no: self.flow_no,
+            api_no: self.api_no,
+            body,
+        };
+
+        // Reset state for next frame
+        self.started = false;
+        self.flow_no = 0;
+        self.api_no = 0;
+        self.body_size = -1;
+
+        Some(frame)
     }
 }
 
@@ -123,6 +126,6 @@ mod tests {
 
         assert_eq!(frame.flow_no, flow_no);
         assert_eq!(frame.api_no, api_no);
-        assert_eq!(frame.body_str, body);
+        assert_eq!(frame.body, body);
     }
 }

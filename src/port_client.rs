@@ -94,7 +94,7 @@ impl RbkPortClient {
         let notify = state.notify.clone();
 
         // Validate API number fits in u16
-        if api_no < 0 || api_no > 65535 {
+        if !(0..=65535).contains(&api_no) {
             return Ok(RbkRequestResult::new(
                 RbkResultKind::BadApiNo,
                 self.host.clone(),
@@ -246,7 +246,7 @@ async fn read_loop(state: Arc<Mutex<ClientState>>) {
                 // Process all complete frames
                 while let Some(frame) = decoder.decode(&mut buf) {
                     let mut state = state.lock().await;
-                    state.response_map.insert(frame.flow_no, frame.body_str);
+                    state.response_map.insert(frame.flow_no, frame.body);
                     state.notify.notify_waiters();
                 }
 
