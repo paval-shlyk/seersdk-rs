@@ -196,8 +196,10 @@ impl RbkPortClient {
 
 impl Drop for RbkPortClient {
     fn drop(&mut self) {
-        // Note: Drop cannot be async, so cleanup happens on the next await point
-        // Users should explicitly handle cleanup if needed
+        // Note: Drop cannot be async in Rust, and proper cleanup requires async operations.
+        // The read task will be automatically aborted when the JoinHandle is dropped.
+        // The TCP connection will be closed when the TcpStream is dropped.
+        // This provides automatic cleanup, though it's not as graceful as calling reset().
     }
 }
 

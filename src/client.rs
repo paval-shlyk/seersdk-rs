@@ -112,8 +112,10 @@ impl RbkClient {
 
 impl Drop for RbkClient {
     fn drop(&mut self) {
-        // Note: Drop cannot be async, so we spawn a blocking task
-        // Users should call dispose() explicitly for graceful shutdown
-        // This is a best-effort cleanup
+        // Note: Drop cannot be async in Rust, and proper cleanup of TCP connections
+        // requires async operations. The connections will be closed when the underlying
+        // RbkPortClient instances are dropped, which will abort their read tasks.
+        // For graceful shutdown with proper connection cleanup, users should manage
+        // the client lifetime explicitly within an async context.
     }
 }
