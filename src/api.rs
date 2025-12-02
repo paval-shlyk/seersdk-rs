@@ -55,7 +55,7 @@ pub enum StateApi {
     QuerySpeed,
     /// Query robot status (API 1001)
     QueryStatus,
-    /// Custom state API with explicit API number
+    /// Custom state API with explicit API number (must be in range 1000-1999)
     Custom(u16),
 }
 
@@ -66,7 +66,14 @@ impl StateApi {
             StateApi::QueryPose => 1004,
             StateApi::QuerySpeed => 1005,
             StateApi::QueryStatus => 1001,
-            StateApi::Custom(no) => *no,
+            StateApi::Custom(no) => {
+                debug_assert!(
+                    (1000..=1999).contains(no),
+                    "Custom State API number {} is outside valid range 1000-1999",
+                    no
+                );
+                *no
+            }
         }
     }
 }
@@ -80,7 +87,7 @@ pub enum ControlApi {
     SetSpeed,
     /// Stop robot (API 2002)
     Stop,
-    /// Custom control API with explicit API number
+    /// Custom control API with explicit API number (must be in range 2000-2999)
     Custom(u16),
 }
 
@@ -89,7 +96,14 @@ impl ControlApi {
         match self {
             ControlApi::SetSpeed => 2001,
             ControlApi::Stop => 2002,
-            ControlApi::Custom(no) => *no,
+            ControlApi::Custom(no) => {
+                debug_assert!(
+                    (2000..=2999).contains(no),
+                    "Custom Control API number {} is outside valid range 2000-2999",
+                    no
+                );
+                *no
+            }
         }
     }
 }
@@ -107,7 +121,7 @@ pub enum NavApi {
     PauseNav,
     /// Resume navigation (API 3004)
     ResumeNav,
-    /// Custom navigation API with explicit API number
+    /// Custom navigation API with explicit API number (must be in range 3000-3999)
     Custom(u16),
 }
 
@@ -118,7 +132,14 @@ impl NavApi {
             NavApi::StopNav => 3002,
             NavApi::PauseNav => 3003,
             NavApi::ResumeNav => 3004,
-            NavApi::Custom(no) => *no,
+            NavApi::Custom(no) => {
+                debug_assert!(
+                    (3000..=3999).contains(no),
+                    "Custom Nav API number {} is outside valid range 3000-3999",
+                    no
+                );
+                *no
+            }
         }
     }
 }
@@ -132,7 +153,7 @@ pub enum ConfigApi {
     GetConfig,
     /// Set configuration (API 4002)
     SetConfig,
-    /// Custom config API with explicit API number
+    /// Custom config API with explicit API number (must be in range 4000-5999)
     Custom(u16),
 }
 
@@ -141,7 +162,14 @@ impl ConfigApi {
         match self {
             ConfigApi::GetConfig => 4001,
             ConfigApi::SetConfig => 4002,
-            ConfigApi::Custom(no) => *no,
+            ConfigApi::Custom(no) => {
+                debug_assert!(
+                    (4000..=5999).contains(no),
+                    "Custom Config API number {} is outside valid range 4000-5999",
+                    no
+                );
+                *no
+            }
         }
     }
 }
@@ -151,14 +179,21 @@ impl ConfigApi {
 /// These APIs interact with the robot's kernel layer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KernelApi {
-    /// Custom kernel API with explicit API number
+    /// Custom kernel API with explicit API number (must be in range 7000-7999)
     Custom(u16),
 }
 
 impl KernelApi {
     pub fn api_no(&self) -> u16 {
         match self {
-            KernelApi::Custom(no) => *no,
+            KernelApi::Custom(no) => {
+                debug_assert!(
+                    (7000..=7999).contains(no),
+                    "Custom Kernel API number {} is outside valid range 7000-7999",
+                    no
+                );
+                *no
+            }
         }
     }
 }
@@ -168,14 +203,21 @@ impl KernelApi {
 /// These APIs provide miscellaneous functionality.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MiscApi {
-    /// Custom misc API with explicit API number
+    /// Custom misc API with explicit API number (must be in range 6000-6998)
     Custom(u16),
 }
 
 impl MiscApi {
     pub fn api_no(&self) -> u16 {
         match self {
-            MiscApi::Custom(no) => *no,
+            MiscApi::Custom(no) => {
+                debug_assert!(
+                    (6000..=6998).contains(no),
+                    "Custom Misc API number {} is outside valid range 6000-6998",
+                    no
+                );
+                *no
+            }
         }
     }
 }

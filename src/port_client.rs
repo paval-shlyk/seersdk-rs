@@ -54,8 +54,8 @@ impl RbkPortClient {
         let result = self.do_request(api_no, req_str, timeout).await;
 
         // Reset on error
-        if result.is_err() {
-            debug!("Request failed, resetting client: {:?}", result);
+        if let Err(ref e) = result {
+            debug!("Request failed (API {}), resetting client: {:?}", api_no, e);
             self.reset().await;
         }
 
