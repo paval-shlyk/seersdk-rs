@@ -22,6 +22,9 @@ pub enum RbkError {
 
     #[error("No such robot")]
     NoSuchRobot,
+
+    #[error("Parse error: {0}")]
+    ParseError(String),
 }
 
 pub type RbkResult<T> = Result<T, RbkError>;

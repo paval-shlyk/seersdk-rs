@@ -1,11 +1,14 @@
 # Seer RBK SDK for Rust
 
+[![CI](https://github.com/paval-shlyk/seersdk-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/paval-shlyk/seersdk-rs/actions/workflows/ci.yml)
+
 A Rust client library for communicating with RBK robots via TCP.
 
 ## Features
 
 - Async/await support using Tokio
-- Type-safe API with enum-based request types
+- Type-safe API with strongly-typed request/response DTOs
+- Automatic JSON serialization/deserialization
 - Automatic connection management
 - Multiple port support for different API categories
 
@@ -21,22 +24,21 @@ seersdk-rs = "1.0.0"
 ## Usage
 
 ```rust
-use seersdk_rs::{RbkClient, ApiRequest, StateApi};
+use seersdk_rs::{RbkClient, RobotBatteryStatusRequest};
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a client connection to the robot
     let client = RbkClient::new("192.168.8.114");
     
-    // Send a request to query the robot's battery level
-    // API QueryBattery with parameter {"simple":true}
-    let response = client.request(
-        ApiRequest::State(StateApi::QueryBattery),
-        r#"{"simple": true}"#,
-        std::time::Duration::from_secs(10)
-    ).await?;
+    // Create a typed request
+    let request = RobotBatteryStatusRequest::new();
     
-    println!("Response: {}", response);
+    // Send the request and get a typed response
+    let response = client.request(request, Duration::from_secs(10)).await?;
+    
+    println!("Response: {:?}", response);
     
     Ok(())
 }
@@ -55,31 +57,45 @@ The RBK protocol uses different ports for different API categories:
 
 ## API Request Types
 
-The SDK provides type-safe API requests through the `ApiRequest` enum:
+The SDK provides type-safe request DTOs for all RBK APIs. Each request type is generated using the `impl_api_request!` macro and implements the `ToRequestBody` and `FromResponseBody` traits.
 
-```rust
-// State APIs
-ApiRequest::State(StateApi::QueryBattery)  // API 1007
-ApiRequest::State(StateApi::QueryPose)     // API 1004
-ApiRequest::State(StateApi::QuerySpeed)    // API 1005
-ApiRequest::State(StateApi::QueryStatus)   // API 1001
+### State APIs (24 types)
 
-// Control APIs
-ApiRequest::Control(ControlApi::SetSpeed)  // API 2001
-ApiRequest::Control(ControlApi::Stop)      // API 2002
+- `RobotInfoRequest` - Query robot information (API 1000)
+- `RobotBatteryStatusRequest` - Check battery status (API 1007)
+- `RobotLocationRequest` - Query robot location (API 1004)
+- `RobotSpeedRequest` - Query robot speed (API 1005)
+- And 20 more...
 
-// Navigation APIs
-ApiRequest::Nav(NavApi::StartNav)          // API 3001
-ApiRequest::Nav(NavApi::StopNav)           // API 3002
+### Control APIs (10 types)
 
-// Config APIs
-ApiRequest::Config(ConfigApi::GetConfig)   // API 4001
-ApiRequest::Config(ConfigApi::SetConfig)   // API 4002
+- `StartExerciseRequest` - Start exercising (API 2000)
+- `StopExerciseRequest` - Stop exercising (API 2001)
+- `RelocateRequest` - Relocate robot (API 2003)
+- And 7 more...
 
-// Custom APIs (for APIs not explicitly defined)
-ApiRequest::State(StateApi::Custom(1999))
-ApiRequest::Control(ControlApi::Custom(2500))
-```
+### Navigation APIs (8 types)
+
+- `MoveToPointRequest` - Free navigation to a point (API 3050)
+- `MoveToTargetRequest` - Fixed path navigation (API 3051)
+- `PatrolRequest` - Inspection route (API 3052)
+- And 5 more...
+
+### Config APIs (4 types)
+
+- `SwitchModeRequest` - Switch operating mode (API 4000)
+- `SetConfigRequest` - Set configuration (API 4001)
+- And 2 more...
+
+### Kernel APIs (3 types)
+
+- `ShutdownRequest` - Shutdown robot (API 5000)
+- `RebootRequest` - Reboot robot (API 5003)
+- `ResetFirmwareRequest` - Reset firmware (API 5005)
+
+### Misc APIs (1 type)
+
+- `SpeakerRequest` - Speaker control (API 6000)
 
 ## Examples
 
@@ -89,12 +105,20 @@ See the `examples/` directory for more usage examples:
 cargo run --example battery_query
 ```
 
+## Documentation
+
+Build the documentation locally:
+
+```bash
+cargo doc --open
+```
+
 ## Note
 
-Most RBK API requests and responses use JSON format.
+All RBK API requests and responses use JSON format. The SDK automatically handles serialization and deserialization.
 
 ---
 
-## Legacy Java Client
+## License
 
-The original Java client implementation is preserved in the `src/` directory with Maven configuration.
+This project is licensed under MIT OR Apache-2.0.

@@ -49,32 +49,73 @@ impl ApiRequest {
     }
 }
 
-//generate documetation and dto types
-//impl_api_request!(RobotInfoRequest, ApiRequest::State(RobotInfo), res: StatusMessage)
+/// Macro to generate request DTO types for RBK robot APIs
+///
+/// This macro creates a request type with associated traits for serialization and response handling.
+///
+/// # Patterns
+///
+/// 1. Request without payload (returns empty string):
+/// ```ignore
+/// impl_api_request!(RequestTypeName, ApiRequest::Module(ModuleApi::Variant), res: ResponseType);
+/// ```
+///
+/// 2. Request with payload (serializes payload to JSON):
+/// ```ignore
+/// impl_api_request!(RequestTypeName, ApiRequest::Module(ModuleApi::Variant), req: PayloadType, res: ResponseType);
+/// ```
+///
+/// # Arguments
+///
+/// * `$req_type` - Name of the request type to generate
+/// * `$api_variant` - The API variant expression (e.g., `ApiRequest::State(StateApi::RobotInfo)`)
+/// * `$req_body_type` - (Optional) Type of the request payload for requests that need a body
+/// * `$res_type` - Type of the response that will be returned
+/// * `$docs` - (Optional) Documentation string for the generated request type
 macro_rules! impl_api_request {
-    ($req_type:ident, $api_variant:expr, $(req: $req_body:expr,)? res: $res_type:ty) => {
-        #[derive(Debug, Clone)]
-        pub struct $req_type {
-            $(
-                pub req_body: String,
-            )?
-        }
+    // Pattern for requests without payload
+    ($req_type:ident, $api_variant:expr, res: $res_type:ty $(, $docs:literal)?) => {
+        $(#[doc = $docs])?
+        #[derive(Debug, Clone, Default)]
+        pub struct $req_type;
 
         impl $req_type {
-            pub fn new($(req_body: impl ToString,)?) -> Self {
-                Self {
-                    $(
-                        req_body: req_body.to_string(),
-                    )?
-                }
+            pub fn new() -> Self {
+                Self
             }
         }
 
         impl $crate::api::ToRequestBody for $req_type {
-            fn to_request_body(&self) -> String {
-                $(
-                    self.req_body.clone()
-                )?
+            fn to_request_body(&self) -> Result<String, serde_json::Error> {
+                Ok(String::new())
+            }
+
+            fn to_api_request(&self) -> ApiRequest {
+                $api_variant
+            }
+        }
+
+        impl $crate::api::FromResponseBody for $req_type {
+            type Response = $res_type;
+        }
+    };
+    // Pattern for requests with payload
+    ($req_type:ident, $api_variant:expr, req: $req_body_type:ty, res: $res_type:ty $(, $docs:literal)?) => {
+        $(#[doc = $docs])?
+        #[derive(Debug, Clone)]
+        pub struct $req_type {
+            pub req_body: $req_body_type,
+        }
+
+        impl $req_type {
+            pub fn new(req_body: $req_body_type) -> Self {
+                Self { req_body }
+            }
+        }
+
+        impl $crate::api::ToRequestBody for $req_type {
+            fn to_request_body(&self) -> Result<String, serde_json::Error> {
+                serde_json::to_string(&self.req_body)
             }
 
             fn to_api_request(&self) -> ApiRequest {
@@ -89,6 +130,65 @@ macro_rules! impl_api_request {
 }
 
 impl_api_request!(RobotInfoRequest, ApiRequest::State(StateApi::RobotInfo), res: StatusMessage);
+impl_api_request!(RobotRunStatusRequest, ApiRequest::State(StateApi::RobotRunStatus), res: StatusMessage);
+impl_api_request!(RobotModeRequest, ApiRequest::State(StateApi::RobotMode), res: StatusMessage);
+impl_api_request!(RobotLocationRequest, ApiRequest::State(StateApi::RobotLocation), res: StatusMessage);
+impl_api_request!(RobotSpeedRequest, ApiRequest::State(StateApi::RobotSpeed), res: StatusMessage);
+impl_api_request!(RobotBlockStatusRequest, ApiRequest::State(StateApi::RobotBlockStatus), res: StatusMessage);
+impl_api_request!(RobotBatteryStatusRequest, ApiRequest::State(StateApi::RobotBatteryStatus), res: StatusMessage);
+impl_api_request!(RobotBrakeStatusRequest, ApiRequest::State(StateApi::RobotBrakeStatus), res: StatusMessage);
+impl_api_request!(RobotLidarDataRequest, ApiRequest::State(StateApi::RobotLidarData), res: StatusMessage);
+impl_api_request!(RobotPathDataRequest, ApiRequest::State(StateApi::RobotPathData), res: StatusMessage);
+impl_api_request!(RobotCurrentAreaRequest, ApiRequest::State(StateApi::RobotCurrentArea), res: StatusMessage);
+impl_api_request!(RobotEmergencyStatusRequest, ApiRequest::State(StateApi::RobotEmergencyStatus), res: StatusMessage);
+impl_api_request!(RobotIODataRequest, ApiRequest::State(StateApi::RobotIOData), res: StatusMessage);
+impl_api_request!(RobotTaskStatusRequest, ApiRequest::State(StateApi::RobotTaskStatus), res: StatusMessage);
+impl_api_request!(RobotRelocationStatusRequest, ApiRequest::State(StateApi::RobotRelocationStatus), res: StatusMessage);
+impl_api_request!(RobotLoadMapStatusRequest, ApiRequest::State(StateApi::RobotLoadMapStatus), res: StatusMessage);
+impl_api_request!(RobotSlamStatusRequest, ApiRequest::State(StateApi::RobotSlamStatus), res: StatusMessage);
+impl_api_request!(RobotAlarmStatusRequest, ApiRequest::State(StateApi::RobotAlarmStatus), res: StatusMessage);
+impl_api_request!(RobotAllStatus1Request, ApiRequest::State(StateApi::RobotAllStatus1), res: StatusMessage);
+impl_api_request!(RobotAllStatus2Request, ApiRequest::State(StateApi::RobotAllStatus2), res: StatusMessage);
+impl_api_request!(RobotAllStatus3Request, ApiRequest::State(StateApi::RobotAllStatus3), res: StatusMessage);
+impl_api_request!(RobotInitStatusRequest, ApiRequest::State(StateApi::RobotInitStatus), res: StatusMessage);
+impl_api_request!(RobotMapInfoRequest, ApiRequest::State(StateApi::RobotMapInfo), res: StatusMessage);
+impl_api_request!(RobotParamsRequest, ApiRequest::State(StateApi::RobotParams), res: StatusMessage);
+
+// Control API requests
+impl_api_request!(StartExerciseRequest, ApiRequest::Control(ControlApi::StartExercise), res: StatusMessage);
+impl_api_request!(StopExerciseRequest, ApiRequest::Control(ControlApi::StopExercise), res: StatusMessage);
+impl_api_request!(GyroCalibrateRequest, ApiRequest::Control(ControlApi::GyroCalibrate), res: StatusMessage);
+impl_api_request!(RelocateRequest, ApiRequest::Control(ControlApi::Relocate), res: StatusMessage);
+impl_api_request!(ConfirmLocationRequest, ApiRequest::Control(ControlApi::ConfirmLocation), res: StatusMessage);
+impl_api_request!(OpenLoopMotionRequest, ApiRequest::Control(ControlApi::OpenLoopMotion), res: StatusMessage);
+impl_api_request!(StartSlamRequest, ApiRequest::Control(ControlApi::StartSlam), res: StatusMessage);
+impl_api_request!(StopSlamRequest, ApiRequest::Control(ControlApi::StopSlam), res: StatusMessage);
+impl_api_request!(SwitchMapRequest, ApiRequest::Control(ControlApi::SwitchMap), res: StatusMessage);
+impl_api_request!(ReloadMapObjectsRequest, ApiRequest::Control(ControlApi::ReloadMapObjects), res: StatusMessage);
+
+// Navigation API requests
+impl_api_request!(PausTaskRequest, ApiRequest::Nav(NavApi::PausTask), res: StatusMessage);
+impl_api_request!(ResumeTaskRequest, ApiRequest::Nav(NavApi::ResumeTask), res: StatusMessage);
+impl_api_request!(CancelTaskRequest, ApiRequest::Nav(NavApi::CancelTask), res: StatusMessage);
+impl_api_request!(MoveToPointRequest, ApiRequest::Nav(NavApi::MoveToPoint), res: StatusMessage);
+impl_api_request!(MoveToTargetRequest, ApiRequest::Nav(NavApi::MoveToTarget), res: StatusMessage);
+impl_api_request!(PatrolRequest, ApiRequest::Nav(NavApi::Patrol), res: StatusMessage);
+impl_api_request!(TranslateRequest, ApiRequest::Nav(NavApi::Translate), res: StatusMessage);
+impl_api_request!(TurnRequest, ApiRequest::Nav(NavApi::Turn), res: StatusMessage);
+
+// Config API requests
+impl_api_request!(SwitchModeRequest, ApiRequest::Config(ConfigApi::SwitchMode), res: StatusMessage);
+impl_api_request!(SetConfigRequest, ApiRequest::Config(ConfigApi::SetConfig), res: StatusMessage);
+impl_api_request!(SaveConfigRequest, ApiRequest::Config(ConfigApi::SaveConfig), res: StatusMessage);
+impl_api_request!(ReloadConfigRequest, ApiRequest::Config(ConfigApi::ReloadConfig), res: StatusMessage);
+
+// Kernel API requests
+impl_api_request!(ShutdownRequest, ApiRequest::Kernel(KernelApi::Shutdown), res: StatusMessage);
+impl_api_request!(RebootRequest, ApiRequest::Kernel(KernelApi::Reboot), res: StatusMessage);
+impl_api_request!(ResetFirmwareRequest, ApiRequest::Kernel(KernelApi::ResetFirmware), res: StatusMessage);
+
+// Misc API requests
+impl_api_request!(SpeakerRequest, ApiRequest::Misc(MiscApi::Speaker), res: StatusMessage);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]

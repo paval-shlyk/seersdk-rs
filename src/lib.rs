@@ -5,20 +5,17 @@
 //! ## Example
 //!
 //! ```no_run
-//! use seersdk_rs::{RbkClient, ApiRequest, StateApi};
+//! use seersdk_rs::{RbkClient, RobotBatteryStatusRequest};
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     let client = RbkClient::new("192.168.8.114");
 //!     
-//!     let response = client.request(
-//!         ApiRequest::State(StateApi::QueryBattery),
-//!         r#"{"simple": true}"#,
-//!         Duration::from_secs(10)
-//!     ).await?;
+//!     let request = RobotBatteryStatusRequest::new();
+//!     let response = client.request(request, Duration::from_secs(10)).await?;
 //!     
-//!     println!("Response: {}", response);
+//!     println!("Response: {:?}", response);
 //!     
 //!     Ok(())
 //! }
@@ -34,3 +31,47 @@ mod protocol;
 pub use api::*;
 pub use client::RbkClient;
 pub use error::{RbkError, RbkResult};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_request_types_exist() {
+        // Test that all major request types are generated and accessible
+        let _ = RobotInfoRequest::new();
+        let _ = RobotBatteryStatusRequest::new();
+        let _ = StartExerciseRequest::new();
+        let _ = MoveToPointRequest::new();
+        let _ = SwitchModeRequest::new();
+        let _ = ShutdownRequest::new();
+        let _ = SpeakerRequest::new();
+    }
+
+    #[test]
+    fn test_request_body_serialization() {
+        use crate::api::ToRequestBody;
+
+        // Test request without payload returns empty string
+        let request = RobotInfoRequest::new();
+        assert_eq!(request.to_request_body().unwrap(), "");
+
+        // Verify all requests have proper API variants
+        let api = request.to_api_request();
+        assert_eq!(api.api_no(), 1000);
+    }
+
+    #[test]
+    fn test_response_type_associations() {
+        use crate::api::FromResponseBody;
+
+        // Verify response type associations work
+        type Response = <RobotInfoRequest as FromResponseBody>::Response;
+
+        // Response should be StatusMessage
+        let _: Response = StatusMessage {
+            code: ErrorCode::Unavailable,
+            message: "test".to_string(),
+        };
+    }
+}
