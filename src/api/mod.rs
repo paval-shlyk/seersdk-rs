@@ -113,6 +113,12 @@ macro_rules! impl_api_request {
             }
         }
 
+        impl $req_body_type {
+            pub fn into_request(self) -> $req_type {
+                $req_type { req_body: self }
+            }
+        }
+
         impl $crate::api::ToRequestBody for $req_type {
             fn to_request_body(&self) -> Result<String, serde_json::Error> {
                 serde_json::to_string(&self.req_body)
@@ -129,12 +135,12 @@ macro_rules! impl_api_request {
     };
 }
 
-impl_api_request!(RobotInfoRequest, ApiRequest::State(StateApi::RobotInfo), res: StatusMessage);
-impl_api_request!(RobotRunStatusRequest, ApiRequest::State(StateApi::RobotRunStatus), res: StatusMessage);
+impl_api_request!(CommonInfoRequest, ApiRequest::State(StateApi::RobotInfo), res: CommonInfo);
+impl_api_request!(OperationInfoRequest, ApiRequest::State(StateApi::RobotRunStatus), res: OperationInfo);
 impl_api_request!(RobotModeRequest, ApiRequest::State(StateApi::RobotMode), res: StatusMessage);
-impl_api_request!(RobotLocationRequest, ApiRequest::State(StateApi::RobotLocation), res: StatusMessage);
+impl_api_request!(RobotPoseRequest, ApiRequest::State(StateApi::RobotPose), res: RobotPose);
 impl_api_request!(RobotSpeedRequest, ApiRequest::State(StateApi::RobotSpeed), res: StatusMessage);
-impl_api_request!(RobotBlockStatusRequest, ApiRequest::State(StateApi::RobotBlockStatus), res: StatusMessage);
+impl_api_request!(RobotBlockStatusRequest, ApiRequest::State(StateApi::RobotBlockStatus), res: BlockStatus);
 impl_api_request!(RobotBatteryStatusRequest, ApiRequest::State(StateApi::RobotBatteryStatus), res: StatusMessage);
 impl_api_request!(RobotBrakeStatusRequest, ApiRequest::State(StateApi::RobotBrakeStatus), res: StatusMessage);
 impl_api_request!(RobotLidarDataRequest, ApiRequest::State(StateApi::RobotLidarData), res: StatusMessage);
@@ -167,11 +173,13 @@ impl_api_request!(SwitchMapRequest, ApiRequest::Control(ControlApi::SwitchMap), 
 impl_api_request!(ReloadMapObjectsRequest, ApiRequest::Control(ControlApi::ReloadMapObjects), res: StatusMessage);
 
 // Navigation API requests
-impl_api_request!(PausTaskRequest, ApiRequest::Nav(NavApi::PausTask), res: StatusMessage);
+impl_api_request!(PauseTaskRequest, ApiRequest::Nav(NavApi::PauseTask), res: StatusMessage);
 impl_api_request!(ResumeTaskRequest, ApiRequest::Nav(NavApi::ResumeTask), res: StatusMessage);
 impl_api_request!(CancelTaskRequest, ApiRequest::Nav(NavApi::CancelTask), res: StatusMessage);
-impl_api_request!(MoveToPointRequest, ApiRequest::Nav(NavApi::MoveToPoint), res: StatusMessage);
-impl_api_request!(MoveToTargetRequest, ApiRequest::Nav(NavApi::MoveToTarget), res: StatusMessage);
+
+impl_api_request!(MoveToPointRequest, ApiRequest::Nav(NavApi::MoveToPoint), req: MoveToPoint, res: StatusMessage);
+impl_api_request!(MoveToTargetRequest, ApiRequest::Nav(NavApi::MoveToTarget), req: MoveToTarget, res: StatusMessage);
+
 impl_api_request!(PatrolRequest, ApiRequest::Nav(NavApi::Patrol), res: StatusMessage);
 impl_api_request!(TranslateRequest, ApiRequest::Nav(NavApi::Translate), res: StatusMessage);
 impl_api_request!(TurnRequest, ApiRequest::Nav(NavApi::Turn), res: StatusMessage);
@@ -200,7 +208,7 @@ pub enum StateApi {
     /// Query the operating mode of the robot
     RobotMode = 1003,
     /// Query the location of the robot
-    RobotLocation = 1004,
+    RobotPose = 1004,
     /// Query robot speed
     RobotSpeed = 1005,
     /// Query the blocked status of the robot
@@ -272,7 +280,7 @@ pub enum ControlApi {
 #[repr(u16)]
 pub enum NavApi {
     /// Pause the current task
-    PausTask = 3001,
+    PauseTask = 3001,
     /// Resume the current task
     ResumeTask = 3002,
     /// Cancel the current task

@@ -47,6 +47,8 @@ impl RbkClient {
     /// ```
     pub fn new(host: impl Into<String>) -> Self {
         let host = host.into();
+        //todo: block until connections are established
+
         Self {
             config_client: RbkPortClient::new(host.clone(), CONFIG_PORT),
             misc_client: RbkPortClient::new(host.clone(), MISC_PORT),

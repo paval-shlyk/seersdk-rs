@@ -39,10 +39,14 @@ mod tests {
     #[test]
     fn test_request_types_exist() {
         // Test that all major request types are generated and accessible
-        let _ = RobotInfoRequest::new();
+        let _ = CommonInfoRequest::new();
         let _ = RobotBatteryStatusRequest::new();
         let _ = StartExerciseRequest::new();
-        let _ = MoveToPointRequest::new();
+        let _ = MoveToPointRequest::new(MoveToPoint::zeros());
+        let _ = MoveToTargetRequest::new(MoveToTarget::new("target1"));
+        let _ = MoveToPoint::new(1.0, 2.0).into_request();
+        let _ = MoveToPoint::with_id("id").into_request();
+        let _ = MoveToTarget::new("target1").into_request();
         let _ = SwitchModeRequest::new();
         let _ = ShutdownRequest::new();
         let _ = SpeakerRequest::new();
@@ -53,7 +57,7 @@ mod tests {
         use crate::api::ToRequestBody;
 
         // Test request without payload returns empty string
-        let request = RobotInfoRequest::new();
+        let request = CommonInfoRequest::new();
         assert_eq!(request.to_request_body().unwrap(), "");
 
         // Verify all requests have proper API variants
@@ -66,12 +70,15 @@ mod tests {
         use crate::api::FromResponseBody;
 
         // Verify response type associations work
-        type Response = <RobotInfoRequest as FromResponseBody>::Response;
+        type Response = <CommonInfoRequest as FromResponseBody>::Response;
 
         // Response should be StatusMessage
-        let _: Response = StatusMessage {
-            code: ErrorCode::Unavailable,
-            message: "test".to_string(),
+        let _: Response = CommonInfo {
+            id: "robot1".to_string(),
+            version: "1.0".to_string(),
+            model: "RBK-1".to_string(),
+            code: None,
+            message: "".to_string(),
         };
     }
 }
