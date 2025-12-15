@@ -41,9 +41,9 @@ mod tests {
         // Test that all major request types are generated and accessible
         let _ = RobotInfoRequest::new();
         let _ = RobotBatteryStatusRequest::new();
-        let _ = StartExerciseRequest::new();
-        let _ = MoveToPointRequest::new();
-        let _ = SwitchModeRequest::new();
+        let _ = StopExerciseRequest::new();
+        let _ = MoveToTargetRequest::new();
+        let _ = SetConfigRequest::new();
         let _ = ShutdownRequest::new();
         let _ = SpeakerRequest::new();
     }
