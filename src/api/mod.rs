@@ -32,7 +32,7 @@ pub enum ApiRequest {
     /// Kernel module APIs (7000-7999)
     Kernel(KernelApi),
     /// Misc module APIs (6000-6998)
-    Misc(MiscApi),
+    Peripheral(PeripheralApi),
 }
 
 impl ApiRequest {
@@ -44,7 +44,7 @@ impl ApiRequest {
             ApiRequest::Nav(api) => api as u16,
             ApiRequest::Config(api) => api as u16,
             ApiRequest::Kernel(api) => api as u16,
-            ApiRequest::Misc(api) => api as u16,
+            ApiRequest::Peripheral(api) => api as u16,
         }
     }
 }
@@ -140,8 +140,8 @@ impl_api_request!(OperationInfoRequest, ApiRequest::State(StateApi::RobotRunStat
 impl_api_request!(RobotModeRequest, ApiRequest::State(StateApi::RobotMode), res: StatusMessage);
 impl_api_request!(RobotPoseRequest, ApiRequest::State(StateApi::RobotPose), res: RobotPose);
 impl_api_request!(RobotSpeedRequest, ApiRequest::State(StateApi::RobotSpeed), res: StatusMessage);
-impl_api_request!(RobotBlockStatusRequest, ApiRequest::State(StateApi::RobotBlockStatus), res: BlockStatus);
-impl_api_request!(RobotBatteryStatusRequest, ApiRequest::State(StateApi::RobotBatteryStatus), res: StatusMessage);
+impl_api_request!(BlockStatusRequest, ApiRequest::State(StateApi::RobotBlockStatus), res: BlockStatus);
+impl_api_request!(BatteryStatusRequest, ApiRequest::State(StateApi::RobotBatteryStatus), res: BatteryStatus);
 impl_api_request!(RobotBrakeStatusRequest, ApiRequest::State(StateApi::RobotBrakeStatus), res: StatusMessage);
 impl_api_request!(RobotLidarDataRequest, ApiRequest::State(StateApi::RobotLidarData), res: StatusMessage);
 impl_api_request!(RobotPathDataRequest, ApiRequest::State(StateApi::RobotPathData), res: StatusMessage);
@@ -196,7 +196,12 @@ impl_api_request!(RebootRequest, ApiRequest::Kernel(KernelApi::Reboot), res: Sta
 impl_api_request!(ResetFirmwareRequest, ApiRequest::Kernel(KernelApi::ResetFirmware), res: StatusMessage);
 
 // Misc API requests
-impl_api_request!(SpeakerRequest, ApiRequest::Misc(MiscApi::Speaker), res: StatusMessage);
+impl_api_request!(SpeakerRequest, ApiRequest::Peripheral(PeripheralApi::Speaker), res: StatusMessage);
+
+impl_api_request!(LoadJackRequest, ApiRequest::Peripheral(PeripheralApi::LoadJack), res: StatusMessage);
+impl_api_request!(UnloadJackRequest, ApiRequest::Peripheral(PeripheralApi::UnloadJack), res: StatusMessage);
+impl_api_request!(StopJackRequest, ApiRequest::Peripheral(PeripheralApi::StopJack), res: StatusMessage);
+impl_api_request!(SetJackHeightRequest, ApiRequest::Peripheral(PeripheralApi::SetJackHeight), req: SetJackHeight, res: StatusMessage);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
@@ -235,6 +240,8 @@ pub enum StateApi {
     RobotLoadMapStatus = 1022,
     /// Query the status of the robot scanning pictures
     RobotSlamStatus = 1025,
+    /// Query the status
+    JackStatus = 1027,
     /// Query the alarm status of the robot
     RobotAlarmStatus = 1050,
     /// Query batch data 1
@@ -324,6 +331,11 @@ pub enum KernelApi {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
-pub enum MiscApi {
+pub enum PeripheralApi {
     Speaker = 6000,
+
+    LoadJack = 6070,
+    UnloadJack = 6071,
+    StopJack = 6072,
+    SetJackHeight = 6073,
 }

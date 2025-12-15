@@ -127,7 +127,7 @@ impl RbkClient {
                     .request(api_no, &request_str, timeout)
                     .await?
             }
-            ApiRequest::Misc(_) => {
+            ApiRequest::Peripheral(_) => {
                 self.misc_client
                     .request(api_no, &request_str, timeout)
                     .await?

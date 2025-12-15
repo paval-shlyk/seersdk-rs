@@ -40,7 +40,7 @@ mod tests {
     fn test_request_types_exist() {
         // Test that all major request types are generated and accessible
         let _ = CommonInfoRequest::new();
-        let _ = RobotBatteryStatusRequest::new();
+        let _ = BatteryStatusRequest::new();
         let _ = StartExerciseRequest::new();
         let _ = MoveToPointRequest::new(MoveToPoint::zeros());
         let _ = MoveToTargetRequest::new(MoveToTarget::new("target1"));

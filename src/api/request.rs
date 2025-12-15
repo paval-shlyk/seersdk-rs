@@ -61,3 +61,14 @@ impl MoveToTarget {
         }
     }
 }
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SetJackHeight {
+    pub height: f64,
+}
+
+impl SetJackHeight {
+    pub fn new(height: f64) -> Self {
+        Self { height }
+    }
+}

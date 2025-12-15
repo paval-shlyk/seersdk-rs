@@ -53,7 +53,7 @@ The RBK protocol uses different ports for different API categories:
 - **Navigation APIs** (3000-3999): port 19206 - Navigation commands
 - **Config APIs** (4000-5999): port 19207 - Configuration management
 - **Kernel APIs** (7000-7999): port 19208 - Kernel operations
-- **Misc APIs** (6000-6998): port 19210 - Miscellaneous operations
+- **Peripheral APIs** (6000-6998): port 19210 - Peripheralellaneous operations
 
 ## API Request Types
 
@@ -62,7 +62,7 @@ The SDK provides type-safe request DTOs for all RBK APIs. Each request type is g
 ### State APIs (24 types)
 
 - `RobotInfoRequest` - Query robot information (API 1000)
-- `RobotBatteryStatusRequest` - Check battery status (API 1007)
+- `BatteryStatusRequest` - Check battery status (API 1007)
 - `RobotLocationRequest` - Query robot location (API 1004)
 - `RobotSpeedRequest` - Query robot speed (API 1005)
 - And 20 more...
@@ -93,9 +93,7 @@ The SDK provides type-safe request DTOs for all RBK APIs. Each request type is g
 - `RebootRequest` - Reboot robot (API 5003)
 - `ResetFirmwareRequest` - Reset firmware (API 5005)
 
-### Misc APIs (1 type)
-
-- `SpeakerRequest` - Speaker control (API 6000)
+### Peripheral APIs
 
 ## Examples
 

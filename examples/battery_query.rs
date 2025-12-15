@@ -1,4 +1,4 @@
-use seersdk_rs::{RbkClient, RobotBatteryStatusRequest};
+use seersdk_rs::{RbkClient, BatteryStatusRequest};
 use std::time::Duration;
 
 #[tokio::main]
@@ -8,11 +8,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 2: Send a request to query the robot's battery level
     // According to RBK protocol, API 1007 is for querying battery
-    let request = RobotBatteryStatusRequest::new();
+    let request = BatteryStatusRequest::new();
     let response = rbk_client.request(request, Duration::from_secs(10)).await?;
 
     // The response is now automatically deserialized to StatusMessage
-    if response.code as u32 == 0 {
+    if let Some(code) = response.code && code == 0 {
         // Robot returned success
         println!("Battery status query succeeded!");
         println!("Response: {:?}", response);
