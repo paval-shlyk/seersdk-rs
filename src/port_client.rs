@@ -8,7 +8,7 @@ use tokio::sync::{Mutex, Notify};
 use tracing::{debug, error};
 
 use crate::error::{RbkError, RbkResult};
-use crate::protocol::{encode_request, RbkDecoder};
+use crate::protocol::{RbkDecoder, encode_request};
 
 /// Client for a specific RBK port
 pub(crate) struct RbkPortClient {
