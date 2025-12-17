@@ -18,6 +18,7 @@ pub use response::*;
 /// - Config APIs (4000-5999): Configuration management on port 19207
 /// - Kernel APIs (7000-7999): Kernel operations on port 19208
 /// - Misc APIs (6000-6998): Miscellaneous operations on port 19210
+/// - Push APIs (9000+): Push configuration and push data
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
 pub enum ApiRequest {
@@ -33,6 +34,8 @@ pub enum ApiRequest {
     Kernel(KernelApi),
     /// Misc module APIs (6000-6998)
     Peripheral(PeripheralApi),
+    /// Push module APIs (9000+)
+    Push(PushApi),
 }
 
 impl ApiRequest {
@@ -45,6 +48,7 @@ impl ApiRequest {
             ApiRequest::Config(api) => api as u16,
             ApiRequest::Kernel(api) => api as u16,
             ApiRequest::Peripheral(api) => api as u16,
+            ApiRequest::Push(api) => api as u16,
         }
     }
 }
@@ -135,187 +139,322 @@ macro_rules! impl_api_request {
     };
 }
 
-impl_api_request!(CommonInfoRequest, ApiRequest::State(StateApi::RobotInfo), res: CommonInfo);
-impl_api_request!(OperationInfoRequest, ApiRequest::State(StateApi::RobotRunStatus), res: OperationInfo);
-impl_api_request!(RobotModeRequest, ApiRequest::State(StateApi::RobotMode), res: StatusMessage);
-impl_api_request!(RobotPoseRequest, ApiRequest::State(StateApi::RobotPose), res: RobotPose);
-impl_api_request!(RobotSpeedRequest, ApiRequest::State(StateApi::RobotSpeed), res: StatusMessage);
-impl_api_request!(BlockStatusRequest, ApiRequest::State(StateApi::RobotBlockStatus), res: BlockStatus);
-impl_api_request!(BatteryStatusRequest, ApiRequest::State(StateApi::RobotBatteryStatus), res: BatteryStatus);
-impl_api_request!(RobotBrakeStatusRequest, ApiRequest::State(StateApi::RobotBrakeStatus), res: StatusMessage);
-impl_api_request!(RobotLidarDataRequest, ApiRequest::State(StateApi::RobotLidarData), res: StatusMessage);
-impl_api_request!(RobotPathDataRequest, ApiRequest::State(StateApi::RobotPathData), res: StatusMessage);
-impl_api_request!(RobotCurrentAreaRequest, ApiRequest::State(StateApi::RobotCurrentArea), res: StatusMessage);
-impl_api_request!(RobotEmergencyStatusRequest, ApiRequest::State(StateApi::RobotEmergencyStatus), res: StatusMessage);
-impl_api_request!(RobotIODataRequest, ApiRequest::State(StateApi::RobotIOData), res: StatusMessage);
-impl_api_request!(RobotTaskStatusRequest, ApiRequest::State(StateApi::RobotTaskStatus), res: StatusMessage);
-impl_api_request!(RobotRelocationStatusRequest, ApiRequest::State(StateApi::RobotRelocationStatus), res: StatusMessage);
-impl_api_request!(RobotLoadMapStatusRequest, ApiRequest::State(StateApi::RobotLoadMapStatus), res: StatusMessage);
-impl_api_request!(RobotSlamStatusRequest, ApiRequest::State(StateApi::RobotSlamStatus), res: StatusMessage);
-impl_api_request!(RobotAlarmStatusRequest, ApiRequest::State(StateApi::RobotAlarmStatus), res: StatusMessage);
-impl_api_request!(RobotAllStatus1Request, ApiRequest::State(StateApi::RobotAllStatus1), res: StatusMessage);
-impl_api_request!(RobotAllStatus2Request, ApiRequest::State(StateApi::RobotAllStatus2), res: StatusMessage);
-impl_api_request!(RobotAllStatus3Request, ApiRequest::State(StateApi::RobotAllStatus3), res: StatusMessage);
-impl_api_request!(RobotInitStatusRequest, ApiRequest::State(StateApi::RobotInitStatus), res: StatusMessage);
-impl_api_request!(RobotMapInfoRequest, ApiRequest::State(StateApi::RobotMapInfo), res: StatusMessage);
-impl_api_request!(RobotParamsRequest, ApiRequest::State(StateApi::RobotParams), res: StatusMessage);
+// State API requests
+impl_api_request!(CommonInfoRequest, ApiRequest::State(StateApi::Info), res: CommonInfo);
+impl_api_request!(OperationInfoRequest, ApiRequest::State(StateApi::Run), res: OperationInfo);
+impl_api_request!(RobotPoseRequest, ApiRequest::State(StateApi::Loc), res: RobotPose);
+impl_api_request!(RobotSpeedRequest, ApiRequest::State(StateApi::Speed), res: StatusMessage);
+impl_api_request!(BlockStatusRequest, ApiRequest::State(StateApi::Block), res: BlockStatus);
+impl_api_request!(BatteryStatusRequest, ApiRequest::State(StateApi::Battery), res: BatteryStatus);
+impl_api_request!(RobotLidarDataRequest, ApiRequest::State(StateApi::Laser), res: StatusMessage);
+impl_api_request!(RobotCurrentAreaRequest, ApiRequest::State(StateApi::Area), res: StatusMessage);
+impl_api_request!(RobotEmergencyStatusRequest, ApiRequest::State(StateApi::Emergency), res: StatusMessage);
+impl_api_request!(RobotIODataRequest, ApiRequest::State(StateApi::Io), res: StatusMessage);
+impl_api_request!(RobotTaskStatusRequest, ApiRequest::State(StateApi::Task), res: StatusMessage);
+impl_api_request!(RobotRelocationStatusRequest, ApiRequest::State(StateApi::Reloc), res: StatusMessage);
+impl_api_request!(RobotLoadMapStatusRequest, ApiRequest::State(StateApi::Loadmap), res: StatusMessage);
+impl_api_request!(RobotSlamStatusRequest, ApiRequest::State(StateApi::Slam), res: StatusMessage);
+impl_api_request!(JackStatusRequest, ApiRequest::State(StateApi::Jack), res: StatusMessage);
+impl_api_request!(RobotAlarmStatusRequest, ApiRequest::State(StateApi::Alarm), res: StatusMessage);
+impl_api_request!(RobotAllStatus1Request, ApiRequest::State(StateApi::All1), res: StatusMessage);
+impl_api_request!(RobotAllStatus2Request, ApiRequest::State(StateApi::All2), res: StatusMessage);
+impl_api_request!(RobotAllStatus3Request, ApiRequest::State(StateApi::All3), res: StatusMessage);
+impl_api_request!(RobotMapInfoRequest, ApiRequest::State(StateApi::Map), res: StatusMessage);
+impl_api_request!(RobotParamsRequest, ApiRequest::State(StateApi::Params), res: StatusMessage);
 
 // Control API requests
-impl_api_request!(StartExerciseRequest, ApiRequest::Control(ControlApi::StartExercise), res: StatusMessage);
-impl_api_request!(StopExerciseRequest, ApiRequest::Control(ControlApi::StopExercise), res: StatusMessage);
-impl_api_request!(GyroCalibrateRequest, ApiRequest::Control(ControlApi::GyroCalibrate), res: StatusMessage);
-impl_api_request!(RelocateRequest, ApiRequest::Control(ControlApi::Relocate), res: StatusMessage);
-impl_api_request!(ConfirmLocationRequest, ApiRequest::Control(ControlApi::ConfirmLocation), res: StatusMessage);
-impl_api_request!(OpenLoopMotionRequest, ApiRequest::Control(ControlApi::OpenLoopMotion), res: StatusMessage);
-impl_api_request!(StartSlamRequest, ApiRequest::Control(ControlApi::StartSlam), res: StatusMessage);
-impl_api_request!(StopSlamRequest, ApiRequest::Control(ControlApi::StopSlam), res: StatusMessage);
-impl_api_request!(SwitchMapRequest, ApiRequest::Control(ControlApi::SwitchMap), res: StatusMessage);
-impl_api_request!(ReloadMapObjectsRequest, ApiRequest::Control(ControlApi::ReloadMapObjects), res: StatusMessage);
+impl_api_request!(StopExerciseRequest, ApiRequest::Control(ControlApi::Stop), res: StatusMessage);
+impl_api_request!(RelocateRequest, ApiRequest::Control(ControlApi::Reloc), res: StatusMessage);
+impl_api_request!(ConfirmLocationRequest, ApiRequest::Control(ControlApi::Comfirmloc), res: StatusMessage);
+impl_api_request!(OpenLoopMotionRequest, ApiRequest::Control(ControlApi::Motion), res: StatusMessage);
+impl_api_request!(SwitchMapRequest, ApiRequest::Control(ControlApi::Loadmap), res: StatusMessage);
 
 // Navigation API requests
-impl_api_request!(PauseTaskRequest, ApiRequest::Nav(NavApi::PauseTask), res: StatusMessage);
-impl_api_request!(ResumeTaskRequest, ApiRequest::Nav(NavApi::ResumeTask), res: StatusMessage);
-impl_api_request!(CancelTaskRequest, ApiRequest::Nav(NavApi::CancelTask), res: StatusMessage);
-
-impl_api_request!(MoveToPointRequest, ApiRequest::Nav(NavApi::MoveToPoint), req: MoveToPoint, res: StatusMessage);
+impl_api_request!(PauseTaskRequest, ApiRequest::Nav(NavApi::Pause), res: StatusMessage);
+impl_api_request!(ResumeTaskRequest, ApiRequest::Nav(NavApi::Resume), res: StatusMessage);
+impl_api_request!(CancelTaskRequest, ApiRequest::Nav(NavApi::Cancel), res: StatusMessage);
 impl_api_request!(MoveToTargetRequest, ApiRequest::Nav(NavApi::MoveToTarget), req: MoveToTarget, res: StatusMessage);
-
-impl_api_request!(PatrolRequest, ApiRequest::Nav(NavApi::Patrol), res: StatusMessage);
 impl_api_request!(TranslateRequest, ApiRequest::Nav(NavApi::Translate), res: StatusMessage);
 impl_api_request!(TurnRequest, ApiRequest::Nav(NavApi::Turn), res: StatusMessage);
 
-// Config API requests
-impl_api_request!(SwitchModeRequest, ApiRequest::Config(ConfigApi::SwitchMode), res: StatusMessage);
-impl_api_request!(SetConfigRequest, ApiRequest::Config(ConfigApi::SetConfig), res: StatusMessage);
-impl_api_request!(SaveConfigRequest, ApiRequest::Config(ConfigApi::SaveConfig), res: StatusMessage);
-impl_api_request!(ReloadConfigRequest, ApiRequest::Config(ConfigApi::ReloadConfig), res: StatusMessage);
-
-// Kernel API requests
-impl_api_request!(ShutdownRequest, ApiRequest::Kernel(KernelApi::Shutdown), res: StatusMessage);
-impl_api_request!(RebootRequest, ApiRequest::Kernel(KernelApi::Reboot), res: StatusMessage);
-impl_api_request!(ResetFirmwareRequest, ApiRequest::Kernel(KernelApi::ResetFirmware), res: StatusMessage);
-
-// Misc API requests
-impl_api_request!(SpeakerRequest, ApiRequest::Peripheral(PeripheralApi::Speaker), res: StatusMessage);
-
-impl_api_request!(LoadJackRequest, ApiRequest::Peripheral(PeripheralApi::LoadJack), res: StatusMessage);
-impl_api_request!(UnloadJackRequest, ApiRequest::Peripheral(PeripheralApi::UnloadJack), res: StatusMessage);
-impl_api_request!(StopJackRequest, ApiRequest::Peripheral(PeripheralApi::StopJack), res: StatusMessage);
-impl_api_request!(SetJackHeightRequest, ApiRequest::Peripheral(PeripheralApi::SetJackHeight), req: SetJackHeight, res: StatusMessage);
+// Peripheral API requests
+impl_api_request!(LoadJackRequest, ApiRequest::Peripheral(PeripheralApi::JackLoad), res: StatusMessage);
+impl_api_request!(UnloadJackRequest, ApiRequest::Peripheral(PeripheralApi::JackUnload), res: StatusMessage);
+impl_api_request!(StopJackRequest, ApiRequest::Peripheral(PeripheralApi::JackStop), res: StatusMessage);
+impl_api_request!(SetJackHeightRequest, ApiRequest::Peripheral(PeripheralApi::JackSetHeight), req: SetJackHeight, res: StatusMessage);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
 pub enum StateApi {
-    /// Query robot information
-    RobotInfo = 1000,
-    /// Query the operating status information of the robot (such as running time, mileage, etc.)
-    RobotRunStatus = 1002,
-    /// Query the operating mode of the robot
-    RobotMode = 1003,
-    /// Query the location of the robot
-    RobotPose = 1004,
-    /// Query robot speed
-    RobotSpeed = 1005,
-    /// Query the blocked status of the robot
-    RobotBlockStatus = 1006,
-    /// Check the status of the robot battery
-    RobotBatteryStatus = 1007,
-    /// Check the status of the robot brake
-    RobotBrakeStatus = 1008,
-    /// Query robot lidar data
-    RobotLidarData = 1009,
-    /// Query robot path data
-    RobotPathData = 1010,
-    /// Query the current area of the robot
-    RobotCurrentArea = 1011,
-    /// Query the emergency stop status of the robot
-    RobotEmergencyStatus = 1012,
-    /// Query robot IO data
-    RobotIOData = 1013,
-    /// Query the status of the robot task, the task site,Task-related paths, etc.
-    RobotTaskStatus = 1020,
-    /// Query the relocation status of the robot
-    RobotRelocationStatus = 1021,
-    /// Query the loading status of the robot map
-    RobotLoadMapStatus = 1022,
-    /// Query the status of the robot scanning pictures
-    RobotSlamStatus = 1025,
-    /// Query the status
-    JackStatus = 1027,
-    /// Query the alarm status of the robot
-    RobotAlarmStatus = 1050,
-    /// Query batch data 1
-    RobotAllStatus1 = 1100,
-    /// Query batch data 2
-    RobotAllStatus2 = 1101,
-    /// Query batch data 3
-    RobotAllStatus3 = 1102,
-    /// Query the initialization status of the robot
-    RobotInitStatus = 1111,
-    /// Query the maps loaded by the robot and the stored maps
-    RobotMapInfo = 1300,
-    /// Query robot parameters
-    RobotParams = 1400,
+    /// Query Robot Information
+    Info = 1000,
+    /// Query Robot Running Information
+    Run = 1002,
+    /// Query Robot Location
+    Loc = 1004,
+    /// Query Robot Speed
+    Speed = 1005,
+    /// Query Robot Blocked Status
+    Block = 1006,
+    /// Query Robot Battery Status
+    Battery = 1007,
+    /// Query Robot Laser Status
+    Laser = 1009,
+    /// Query Robot Area Status
+    Area = 1011,
+    /// Query Robot Estop Status
+    Emergency = 1012,
+    /// Query Robot I/O Status
+    Io = 1013,
+    /// Query Robot IMU Data
+    Imu = 1014,
+    /// Query Robot RFID Data
+    Rfid = 1015,
+    /// Query Robot Ultrasonic Status
+    Ultrasonic = 1016,
+    /// Query Robot PGV Data
+    Pgv = 1017,
+    /// Query Robot Encoder Status
+    Encoder = 1018,
+    /// Query Robot Navigation Status
+    Task = 1020,
+    /// Query Robot Localization Status
+    Reloc = 1021,
+    /// Query Robot Map Loading Status
+    Loadmap = 1022,
+    /// Query Scanning Status of Robot
+    Slam = 1025,
+    /// Query Robot Jacking Status
+    Jack = 1027,
+    /// Query Robot Fork Status
+    Fork = 1028,
+    /// Query Robot Roller Status
+    Roller = 1029,
+    /// Query Robot Motor Status
+    Motor = 1040,
+    /// Query Robot Alarm Status
+    Alarm = 1050,
+    /// Query Robot Current Lock
+    CurrentLock = 1060,
+    /// Query Modbus Data
+    Modbus = 1071,
+    /// Query Batch Data 1
+    All1 = 1100,
+    /// Query Batch Data 2
+    All2 = 1101,
+    /// Query Batch Data 3
+    All3 = 1102,
+    /// Query Robot Task Status Package
+    TaskStatusPackage = 1110,
+    /// Query Loaded Map and Stored Map
+    Map = 1300,
+    /// Query Station Information of Currently Loaded Map
+    Station = 1301,
+    /// Query MD5 Value of Specified Map List
+    Mapmd5 = 1302,
+    /// Query the Path between Any Two Points
+    GetPath = 1303,
+    /// Query Robot Parameters
+    Params = 1400,
+    /// Download the Robot Model File
+    Model = 1500,
+    /// Query List of Robot Scripts
+    ScriptInfo = 1506,
+    /// Query List of Robot Script Details
+    ScriptDetailslist = 1507,
+    /// Query Default Parameters of Robot Script
+    ScriptArgs = 1508,
+    /// Query Robot Support Calibration List
+    CalibSupportList = 1509,
+    /// Query Robot Calibration Status
+    CalibStatus = 1510,
+    /// Query Robot Calibration File
+    CalibData = 1511,
+    /// Query 3D QR Code During Mapping
+    Tag3d = 1665,
+    /// Query Status of Robotic Arm
+    Armstatus = 1669,
+    /// Calculate Coordinate Transformation of Robotic Arms
+    Armcalculate = 1670,
+    /// Robotic Arm binTask
+    Armtask = 1671,
+    /// Robotic Arm Motion Control
+    Armmove = 1673,
+    /// Robotic Arm Teaching Panel Control
+    Armoperation = 1674,
+    /// Query the Point Cloud Image of the Currently Recognized Camera
+    Cloudprojection = 1675,
+    /// Emulation from File Recognition
+    Recofiles = 1676,
+    /// Query Driver Params
+    Canframe = 1750,
+    /// Query GNSS Connection Status
+    Gnsscheck = 1760,
+    /// Query List of GNSS Devices
+    GnssList = 1761,
+    /// Query List of Robot Files
+    Listfile = 1798,
+    /// Upload the Robot File
+    Uploadfile = 1799,
+    /// Download the Robot File
+    Downloadfile = 1800,
+    /// Query Storage Bin Information Seen by Robot
+    Bins = 1803,
+    /// Query Robot Sound Status
+    Sound = 1850,
+    /// Download Handle Custom Binding Event
+    JoystickKeymap = 1852,
+    /// Query Transparent Data
+    TransparentData = 1900,
+    /// Run Start Battery Script
+    Startbatteryscript = 1901,
+    /// Stop Robot Battery Script
+    Stopbatteryscript = 1902,
+    /// Start Ambient Lamp Script
+    Startdmxscript = 1903,
+    /// Stop Ambient Lamp Script
+    Stopdmxscript = 1904,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
 pub enum ControlApi {
-    /// Start exercising
-    StartExercise = 2000,
-    /// Stop exercising
-    StopExercise = 2001,
-    /// Calibrate the gyroscope
-    GyroCalibrate = 2002,
-    /// Relocate
-    Relocate = 2003,
-    /// Confirm that the positioning is correct
-    ConfirmLocation = 2004,
-    /// Open loop movement
-    OpenLoopMotion = 2010,
-    /// Start scanning the map
-    StartSlam = 2020,
-    /// Stop scanning the map
-    StopSlam = 2021,
-    /// Switch loaded maps
-    SwitchMap = 2022,
-    /// Reload elements in the map
-    ReloadMapObjects = 2023,
+    /// Stop Open Loop Motion
+    Stop = 2000,
+    /// Relocation
+    Reloc = 2002,
+    /// Confirm Correct Location
+    Comfirmloc = 2003,
+    /// Cancel Relocation
+    Cancelreloc = 2004,
+    /// Open Loop Motion
+    Motion = 2010,
+    /// Switch Map
+    Loadmap = 2022,
+    /// Clear Motor Encoder
+    Clearmotorencoder = 2024,
+    /// Upload and Load Map
+    UploadAndLoadmap = 2025,
+    /// Clear Weight Sensor Value
+    ClearWeightdevvalue = 2026,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
 pub enum NavApi {
-    /// Pause the current task
-    PauseTask = 3001,
-    /// Resume the current task
-    ResumeTask = 3002,
-    /// Cancel the current task
-    CancelTask = 3003,
-    /// Free navigation (freely plan path navigation based on coordinate values or sites on the
-    /// map)
-    MoveToPoint = 3050,
-    /// Fixed path navigation (based on the site on the map and fixed path navigation)
+    /// Pause Navigation
+    Pause = 3001,
+    /// Resume Navigation
+    Resume = 3002,
+    /// Cancel Navigation
+    Cancel = 3003,
+    /// Path Navigation
     MoveToTarget = 3051,
-    /// Inspection (set the route for fixed path navigation)
-    Patrol = 3052,
-    /// Flat motion, linear motion at a fixed speed and a fixed distance
+    /// Get Navigation Path
+    TargetPath = 3053,
+    /// Translation
     Translate = 3055,
-    /// Rotate, rotate at a fixed angle at a fixed angular velocity
+    /// Rotation
     Turn = 3056,
+    /// Tray Rotation
+    Spin = 3057,
+    /// Circular Motion
+    Circular = 3058,
+    /// Enable and Disable Paths
+    Path = 3059,
+    /// Designated Path Navigation
+    MoveToTargetlist = 3066,
+    /// Clear Specified Path Navigation
+    Cleartargetlist = 3067,
+    /// Clear Specified Navigation Path with Task ID
+    Safeclearmovements = 3068,
+    /// Query Task Chain
+    TasklistStatus = 3101,
+    /// Execute Pre-Stored Tasks
+    TasklistName = 3106,
+    /// Query Robot Task Chain List
+    TasklistList = 3115,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
 pub enum ConfigApi {
-    /// Switch operating mode (manual, automatic)
-    SwitchMode = 4000,
-    /// Set configuration parameters
-    SetConfig = 4001,
-    /// Set and save configuration parameters
-    SaveConfig = 4002,
-    /// Load configuration parameters
-    ReloadConfig = 4003,
+    /// Preempt Control
+    Lock = 4005,
+    /// Release Control
+    Unlock = 4006,
+    /// Clear Robot's All Errors
+    Clearallerrors = 4009,
+    /// Load Map to Robot
+    Uploadmap = 4010,
+    /// Download Maps from Robots
+    Downloadmap = 4011,
+    /// Delete Map in Robot
+    Removemap = 4012,
+    /// Upload Robot Script
+    Uploadscript = 4021,
+    /// Download Robot Script
+    Downloadscript = 4022,
+    /// Delete Robot Script
+    Removescript = 4023,
+    /// Configure Robot Push Port
+    Push = 4091,
+    /// Set Robot Params Temporarily
+    Setparams = 4100,
+    /// Set Robot Params Permanently
+    Saveparams = 4101,
+    /// Restore Robot Params
+    Reloadparams = 4102,
+    /// Configure Ultrasonic
+    Ultrasonic = 4130,
+    /// Configure DI
+    Di = 4140,
+    /// Motor Calibration
+    MotorCalib = 4150,
+    /// Motor Clear Fault
+    MotorClearFault = 4151,
+    /// Upload the Model File to Robot
+    Model = 4200,
+    /// Set up Calibration Process Data
+    CalibPushData = 4201,
+    /// Confirmation of Calibration Data
+    CalibConfirm = 4202,
+    /// Clear Calibration Data according to Calibration Type
+    CalibClear = 4203,
+    /// Clear the Robot.cp File
+    CalibClearAll = 4209,
+    /// Add Dynamic Obstacles (Robot Coordinate System)
+    Addobstacle = 4350,
+    /// Add Dynamic Obstacles (World Coordinate System)
+    Addgobstacle = 4351,
+    /// Remove Dynamic Obstacles
+    Removeobstacle = 4352,
+    /// 3D QR Code Mapping
+    Tag3dmapping = 4353,
+    /// Clear Goods Shape
+    ClearGoodsshape = 4356,
+    /// Set Shelf Description File
+    SetShelfshape = 4357,
+    /// Set Driver Params
+    SendCanframe = 4400,
+    /// Reset Running Info
+    ClearOdo = 4450,
+    /// Reset GNSS Configuration
+    ResetGnss = 4460,
+    /// Set GNSS Baudrate
+    SetGnssBaudrate = 4461,
+    /// Set GNSS to Rover mode
+    SetGnssRover = 4462,
+    /// Upload Handle Custom Binding Event
+    JoystickBindKeymap = 4470,
+    /// Set Third-Party Error
+    Seterror = 4800,
+    /// Clear Third-Party Error
+    Clearerror = 4801,
+    /// Set Third-Party Warning
+    Setwarning = 4802,
+    /// Clear Third-Party Warning
+    Clearwarning = 4803,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -332,10 +471,127 @@ pub enum KernelApi {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
 pub enum PeripheralApi {
-    Speaker = 6000,
+    /// Play Audio
+    PlayAudio = 6000,
+    /// Set DO
+    Setdo = 6001,
+    /// Batch Set DO
+    Setdos = 6002,
+    /// Set Relay
+    Setrelay = 6003,
+    /// Soft Estop
+    Softemc = 6004,
+    /// Set Charging Relay
+    Setchargingrelay = 6005,
+    /// Pause Audio
+    PauseAudio = 6010,
+    /// Resume Audio
+    ResumeAudio = 6011,
+    /// Stop Playing Audio
+    StopAudio = 6012,
+    /// Set Virtual DI
+    Setvdi = 6020,
+    /// Upload Audio Files
+    UploadAudio = 6030,
+    /// Download Audio Files
+    DownloadAudio = 6031,
+    /// Get Audio File List
+    AudioList = 6033,
+    /// Set Fork Height
+    SetForkHeight = 6040,
+    /// Stop Fork Motion
+    StopFork = 6041,
+    /// Write Peripheral User-defined Data
+    WritePeripheralData = 6049,
+    /// Roller (belt) Front Roll
+    RollerFrontRoll = 6051,
+    /// Roller (belt) Back Roll
+    RollerBackRoll = 6052,
+    /// Roller (belt) Left Roll
+    RollerLeftRoll = 6053,
+    /// Roller (belt) Right Roll
+    RollerRightRoll = 6054,
+    /// Roller (belt) Front Load
+    RollerFrontLoad = 6055,
+    /// Roller (belt) Front Unload
+    RollerFrontUnload = 6056,
+    /// Roller (belt) Front Pre-Load
+    RollerFrontPreLoad = 6057,
+    /// Roller (belt) Back Load
+    RollerBackLoad = 6058,
+    /// Roller (belt) Back Unload
+    RollerBackUnload = 6059,
+    /// Roller (belt) Back Pre-Load
+    RollerBackPreLoad = 6060,
+    /// Roller (belt) Left Load
+    RollerLeftLoad = 6061,
+    /// Roller (belt) Left Unload
+    RollerLeftUnload = 6062,
+    /// Roller (belt) Right Load
+    RollerRightLoad = 6063,
+    /// Roller (belt) Right Unload
+    RollerRightUnload = 6064,
+    /// Roller (belt) Left Pre-Load
+    RollerLeftPreLoad = 6065,
+    /// Roller (belt) Right Pre-Load
+    RollerRightPreLoad = 6066,
+    /// Roller (belt) Stop
+    RollerStop = 6067,
+    /// Roller (belt) Inverse Left and Right
+    RollerLeftRightInverse = 6068,
+    /// Roller (belt) Inverse Front and Back
+    RollerFrontBackInverse = 6069,
+    /// Jacking Load
+    JackLoad = 6070,
+    /// Jacking Unload
+    JackUnload = 6071,
+    /// Jacking Stop
+    JackStop = 6072,
+    /// Jacking Height
+    JackSetHeight = 6073,
+    /// Clear Cargo Status
+    ResetCargo = 6080,
+    /// Hook Load
+    HookLoad = 6082,
+    /// Hook Unload
+    HookUnload = 6083,
+    /// Write modbus Data
+    SetModbus = 6086,
+    /// Start Map Scanning
+    Slam = 6100,
+    /// End SLAM
+    Endslam = 6101,
+    /// Start Calibration
+    Calibrate = 6110,
+    /// Cancel Calibration
+    Endcalibrate = 6111,
+    /// Get the Current Calibration Result
+    CalibResult = 6112,
+    /// Get the Current Calibration Result
+    CalibAllinone2 = 6115,
+    /// Motor Enabling and Disabling
+    SetMotorEnable = 6201,
+    /// Unbind designate goods
+    ClearGoods = 6801,
+    /// Unbind Goods from Designated Containers
+    ClearContainer = 6802,
+    /// Unbind Goods from all Containers
+    ClearAllContainersGoods = 6803,
+    /// Bind Goods to Containers
+    SetContainerGoods = 6804,
+    /// Update transparent data
+    UpdateTransparentData = 6900,
+    /// Storage Bin Detection
+    BinDetect = 6901,
+    /// Replay
+    Replay = 6910,
+}
 
-    LoadJack = 6070,
-    UnloadJack = 6071,
-    StopJack = 6072,
-    SetJackHeight = 6073,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u16)]
+pub enum PushApi {
+    /// Set the Robot Push Port
+    Config = 9300,
+    /// Robot Push
+    Push = 19301,
 }

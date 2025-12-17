@@ -227,7 +227,7 @@ pub enum JackOperation {
 /// Status of the robot's jack
 /// ### Example
 /// ```
-/// use seersdk_rs::response::{JackStatus, JackOperation};
+/// use seersdk_rs::{JackStatus, JackOperation};
 /// let raw_json = r#"
 ///  {
 ///   "jack_emc": false,
@@ -314,6 +314,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn test_robot_pose_serialization_deserializatio() {
         let with_error_code = r#"
         {
@@ -329,7 +330,7 @@ mod tests {
             serde_json::from_str(with_error_code).unwrap();
         assert_eq!(pose.x, 1.0);
         assert_eq!(pose.y, 2.0);
-        assert_eq!(pose.angle, 0.7854);
+        assert!((pose.angle - 0.7854).abs() < 0.0001);
         assert_eq!(pose.confidence, 0.95);
         assert_eq!(pose.code, Some(StatusCode::Unavailable));
         assert_eq!(pose.message, "msg");
@@ -345,7 +346,7 @@ mod tests {
             serde_json::from_str(without_error_code).unwrap();
         assert_eq!(pose_no_code.x, 3.0);
         assert_eq!(pose_no_code.y, 4.0);
-        assert_eq!(pose_no_code.angle, 1.5708);
+        assert!((pose_no_code.angle - 1.5708).abs() < 0.0001);
         assert_eq!(pose_no_code.confidence, 0.9);
         assert_eq!(pose_no_code.code, None);
         assert_eq!(pose_no_code.message, "");
@@ -365,7 +366,7 @@ mod tests {
 
         let status: super::BlockStatus =
             serde_json::from_str(with_error_code).unwrap();
-        assert_eq!(status.is_blocked, true);
+        assert!(status.is_blocked);
         assert_eq!(status.reason, Some(super::BlockReason::Fallingdown));
         assert_eq!(status.x, Some(1.5));
         assert_eq!(status.y, Some(2.5));
@@ -378,7 +379,7 @@ mod tests {
         }"#;
         let status_no_code: super::BlockStatus =
             serde_json::from_str(without_error_code).unwrap();
-        assert_eq!(status_no_code.is_blocked, false);
+        assert!(!status_no_code.is_blocked);
         assert_eq!(status_no_code.reason, None);
         assert_eq!(status_no_code.x, None);
         assert_eq!(status_no_code.y, None);

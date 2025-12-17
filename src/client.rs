@@ -74,12 +74,12 @@ impl RbkClient {
     /// # Example
     ///
     /// ```no_run
-    /// use seersdk_rs::{RbkClient, RobotBatteryStatusRequest};
+    /// use seersdk_rs::{RbkClient, BatteryStatusRequest};
     /// use std::time::Duration;
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let client = RbkClient::new("192.168.8.114");
-    /// let request = RobotBatteryStatusRequest::new();
+    /// let request = BatteryStatusRequest::new();
     /// let response = client.request(request, Duration::from_secs(10)).await?;
     ///
     /// println!("Battery status response: {:?}", response);
@@ -134,6 +134,11 @@ impl RbkClient {
             }
             ApiRequest::Kernel(_) => {
                 self.kernel_client
+                    .request(api_no, &request_str, timeout)
+                    .await?
+            }
+            ApiRequest::Push(_) => {
+                self.misc_client
                     .request(api_no, &request_str, timeout)
                     .await?
             }

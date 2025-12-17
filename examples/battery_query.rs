@@ -1,4 +1,4 @@
-use seersdk_rs::{RbkClient, BatteryStatusRequest};
+use seersdk_rs::{BatteryStatusRequest, RbkClient};
 use std::time::Duration;
 
 #[tokio::main]
@@ -12,7 +12,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let response = rbk_client.request(request, Duration::from_secs(10)).await?;
 
     // The response is now automatically deserialized to StatusMessage
-    if let Some(code) = response.code && code == 0 {
+    if let Some(code) = response.code
+        && code == seersdk_rs::StatusCode::Success
+    {
         // Robot returned success
         println!("Battery status query succeeded!");
         println!("Response: {:?}", response);

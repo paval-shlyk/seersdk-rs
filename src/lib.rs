@@ -5,14 +5,14 @@
 //! ## Example
 //!
 //! ```no_run
-//! use seersdk_rs::{RbkClient, RobotBatteryStatusRequest};
+//! use seersdk_rs::{RbkClient, BatteryStatusRequest};
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     let client = RbkClient::new("192.168.8.114");
 //!     
-//!     let request = RobotBatteryStatusRequest::new();
+//!     let request = BatteryStatusRequest::new();
 //!     let response = client.request(request, Duration::from_secs(10)).await?;
 //!     
 //!     println!("Response: {:?}", response);
@@ -41,15 +41,11 @@ mod tests {
         // Test that all major request types are generated and accessible
         let _ = CommonInfoRequest::new();
         let _ = BatteryStatusRequest::new();
-        let _ = StartExerciseRequest::new();
-        let _ = MoveToPointRequest::new(MoveToPoint::zeros());
+        let _ = StopExerciseRequest::new();
         let _ = MoveToTargetRequest::new(MoveToTarget::new("target1"));
-        let _ = MoveToPoint::new(1.0, 2.0).into_request();
-        let _ = MoveToPoint::with_id("id").into_request();
         let _ = MoveToTarget::new("target1").into_request();
-        let _ = SwitchModeRequest::new();
-        let _ = ShutdownRequest::new();
-        let _ = SpeakerRequest::new();
+        let _ = SwitchMapRequest::new();
+        let _ = LoadJackRequest::new();
     }
 
     #[test]
