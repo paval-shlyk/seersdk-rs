@@ -39,7 +39,7 @@ pub enum StatusCode {
     /// Loading map error
     LoadMapError = 40052,
     /// Overload map error
-    LoadMapobjError = 40053,
+    LoadMapObjError = 40053,
     /// Open map
     EmptyMap = 40054,
     /// Request execution timeout
@@ -53,7 +53,7 @@ pub enum StatusCode {
     /// Initialization status error
     InitStatusError = 41000,
     /// Map loading status error
-    LoadmapStatusError = 41001,
+    LoadMapStatusError = 41001,
     /// Relocation status error
     RelocStatusError = 41002,
 
@@ -149,7 +149,7 @@ pub struct RobotPose {
 #[repr(u8)]
 pub enum BlockReason {
     Laser = 1,
-    Fallingdown = 2,
+    FallingDown = 2,
     Collision = 3,
     Infrared = 4,
 
@@ -366,7 +366,7 @@ mod tests {
         let status: super::BlockStatus =
             serde_json::from_str(with_error_code).unwrap();
         assert_eq!(status.is_blocked, true);
-        assert_eq!(status.reason, Some(super::BlockReason::Fallingdown));
+        assert_eq!(status.reason, Some(super::BlockReason::FallingDown));
         assert_eq!(status.x, Some(1.5));
         assert_eq!(status.y, Some(2.5));
         assert_eq!(status.code, Some(StatusCode::ParamTypeError));
