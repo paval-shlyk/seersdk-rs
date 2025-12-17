@@ -1,3 +1,5 @@
+use crate::{PointId, TaskId};
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct StatusMessage {
     #[serde(rename = "ret_code")]
@@ -281,6 +283,102 @@ pub struct JackStatus {
     /// API Upload timestamp
     #[serde(rename = "create_on", default)]
     pub timestamp: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct NavStatus {
+    pub state: TaskState,
+    #[serde(rename = "task_type")]
+    pub ty: TaskType,
+    pub target_id: PointId,
+    /// Target point coordinates (x, y, angle)
+    pub target_point: [f64; 3],
+
+    /// Stations already passed on the current navigation path,
+    /// an array of stations, this field is only valid when task_type is 3.
+    /// All intermediate points already passed will be listed here
+    pub finished_path: Vec<PointId>,
+
+    /// Stations on the current navigation path that have not yet been passed,
+    /// represented as an array of stations, are only valid when task_type is 3.
+    /// All intermediate points that have not yet been passed will be listed here.
+    pub unfinished_path: Vec<PointId>,
+
+    /// Navigation Task Additional Information
+    pub move_status_info: String,
+
+    /// API Error Code
+    pub code: Option<StatusCode>,
+    /// API Upload Timestamp
+    pub create_on: Option<String>,
+    /// Error Message
+    #[serde(rename = "err_msg", default)]
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, num_enum::FromPrimitive)]
+#[repr(u32)]
+pub enum TaskType {
+    NoNav = 0,
+    FreeNavToPoint = 1,
+    FreeNavToSite = 2,
+    PathNavToSite = 3,
+    Manual = 7,
+    #[num_enum(default)]
+    Other = 100,
+}
+
+impl_serde_for_num_enum!(TaskType);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, num_enum::FromPrimitive)]
+#[repr(u32)]
+pub enum TaskState {
+    #[num_enum(default)]
+    None = 0,
+    Waiting = 1,
+    Running = 2,
+    Suspended = 3,
+    Completed = 4,
+    Failed = 5,
+    Canceled = 6,
+    OverTime = 7,
+    NotFound = 404,
+}
+
+impl_serde_for_num_enum!(TaskState);
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TaskStateItem {
+    pub task_id: TaskId,
+    pub state: TaskState,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TaskStatus {
+    /// The station closest to the robot within a certain linear distance (this distance is a
+    pub closest_target: PointId,
+    /// The "source_id" in the navigation task currently being executed by the robot
+    pub source_name: TaskId,
+    /// The "id" of the navigation task currently being executed by the robot
+    pub target_name: TaskId,
+    /// In the navigation task currently being executed by the robot, for the corresponding path,
+    /// the proportion of the part that the robot has completed to the entire path
+    pub percentage: f64,
+    /// Projection distance of the robot to the "path corresponding to the currently executing
+    /// navigation task
+    pub distance: f64,
+
+    #[serde(rename = "task_status_list")]
+    pub tasks: Vec<TaskStateItem>,
+    /// During the navigation process, some prompts from the robot to the user can be output to the
+    /// front end. This field does not participate in actual logical judgment
+    pub info: String,
+
+    #[serde(rename = "ret_code", default)]
+    pub code: Option<StatusCode>,
+    #[serde(rename = "err_msg", default)]
+    pub message: String,
+    pub create_on: Option<String>,
 }
 
 #[cfg(test)]

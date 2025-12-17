@@ -9,6 +9,9 @@ mod response;
 pub use request::*;
 pub use response::*;
 
+pub type TaskId = String;
+pub type PointId = String;
+
 /// API request enum representing all RBK robot APIs
 ///
 /// The RBK protocol organizes APIs into modules, each with its own port:
