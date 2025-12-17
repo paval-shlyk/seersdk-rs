@@ -24,7 +24,7 @@ seersdk-rs = "1.0.0"
 ## Usage
 
 ```rust
-use seersdk_rs::{RbkClient, RobotBatteryStatusRequest};
+use seersdk_rs::{RbkClient, BatteryStatusRequest};
 use std::time::Duration;
 
 #[tokio::main]
@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = RbkClient::new("192.168.8.114");
     
     // Create a typed request
-    let request = RobotBatteryStatusRequest::new();
+    let request = BatteryStatusRequest::new();
     
     // Send the request and get a typed response
     let response = client.request(request, Duration::from_secs(10)).await?;
@@ -48,52 +48,94 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 The RBK protocol uses different ports for different API categories:
 
-- **State APIs** (1000-1999): port 19204 - Robot state queries
-- **Control APIs** (2000-2999): port 19205 - Robot control commands
-- **Navigation APIs** (3000-3999): port 19206 - Navigation commands
-- **Config APIs** (4000-5999): port 19207 - Configuration management
-- **Kernel APIs** (7000-7999): port 19208 - Kernel operations
-- **Peripheral APIs** (6000-6998): port 19210 - Peripheralellaneous operations
+- **State APIs** (1000-1999): port 19204 - Robot state queries (55 variants)
+- **Control APIs** (2000-2999): port 19205 - Robot control commands (9 variants)
+- **Navigation APIs** (3000-3999): port 19206 - Navigation commands (16 variants)
+- **Config APIs** (4000-5999): port 19207 - Configuration management (46 variants)
+- **Kernel APIs** (7000-7999): port 19208 - Kernel operations (3 variants)
+- **Peripheral APIs** (6000-6998): port 19210 - Peripheral operations (78 variants)
+- **Push APIs** (9000+): Push configuration and data (2 variants)
 
 ## API Request Types
 
 The SDK provides type-safe request DTOs for all RBK APIs. Each request type is generated using the `impl_api_request!` macro and implements the `ToRequestBody` and `FromResponseBody` traits.
 
-### State APIs (24 types)
+### State APIs (55 variants)
 
-- `RobotInfoRequest` - Query robot information (API 1000)
+The StateApi enum includes over 55 robot state query operations covering:
+- Robot information and status (Info, Run, Loc, Speed, Block, Battery, etc.)
+- Sensors and I/O (Laser, Io, Imu, Rfid, Ultrasonic, Encoder, etc.)
+- Navigation and mapping (Task, Reloc, LoadMap, Slam, Map, Station, etc.)
+- Peripherals (Jack, Fork, Roller, Motor, etc.)
+- Robotic arm operations (ArmStatus, ArmCalculate, ArmTask, ArmMove, etc.)
+- Scripts and files (ScriptInfo, ListFile, UploadFile, DownloadFile, etc.)
+- And many more...
+
+Examples:
+- `CommonInfoRequest` - Query robot information (API 1000)
 - `BatteryStatusRequest` - Check battery status (API 1007)
-- `RobotLocationRequest` - Query robot location (API 1004)
-- `RobotSpeedRequest` - Query robot speed (API 1005)
-- And 20 more...
+- `RobotPoseRequest` - Query robot location (API 1004)
 
-### Control APIs (10 types)
+### Control APIs (9 variants)
 
-- `StartExerciseRequest` - Start exercising (API 2000)
-- `StopExerciseRequest` - Stop exercising (API 2001)
-- `RelocateRequest` - Relocate robot (API 2003)
-- And 7 more...
+Control operations including:
+- Stop, Reloc, ComfirmLoc, CancelReloc
+- Motion, LoadMap, ClearMotorEncoder
+- UploadAndLoadMap, ClearWeightdevvalue
 
-### Navigation APIs (8 types)
+Examples:
+- `StopExerciseRequest` - Stop open loop motion (API 2000)
+- `RelocateRequest` - Relocation (API 2002)
+- `SwitchMapRequest` - Switch map (API 2022)
 
-- `MoveToPointRequest` - Free navigation to a point (API 3050)
-- `MoveToTargetRequest` - Fixed path navigation (API 3051)
-- `PatrolRequest` - Inspection route (API 3052)
-- And 5 more...
+### Navigation APIs (16 variants)
 
-### Config APIs (4 types)
+Navigation and path planning operations:
+- Pause, Resume, Cancel
+- MoveToTarget, MoveToTargetList
+- Translate, Turn, Spin, Circular
+- Path, TargetPath, ClearTargetList, SafeClearMovements
+- TaskListStatus, TaskListName, TaskListList
 
-- `SwitchModeRequest` - Switch operating mode (API 4000)
-- `SetConfigRequest` - Set configuration (API 4001)
-- And 2 more...
+Example:
+- `MoveToTargetRequest` - Path navigation (API 3051)
 
-### Kernel APIs (3 types)
+### Config APIs (46 variants)
 
-- `ShutdownRequest` - Shutdown robot (API 5000)
-- `RebootRequest` - Reboot robot (API 5003)
-- `ResetFirmwareRequest` - Reset firmware (API 5005)
+Configuration management operations including:
+- Lock/Unlock control, map management (UploadMap, DownloadMap, RemoveMap)
+- Script management (UploadScript, DownloadScript, RemoveScript)
+- Parameter management (SetParams, SaveParams, ReloadParams)
+- Motor operations (MotorCalib, MotorClearFault)
+- Calibration (CalibPushData, CalibConfirm, CalibClear, CalibClearAll)
+- Obstacle management (AddObstacle, RemoveObstacle)
+- Error and warning handling (SetError, ClearError, SetWarning, ClearWarning)
+- And many more...
 
-### Peripheral APIs
+### Peripheral APIs (78 variants)
+
+Extensive peripheral control operations:
+- Audio control (PlayAudio, PauseAudio, ResumeAudio, StopAudio, AudioList)
+- Digital I/O (SetDo, SetDos, SetRelay, SetVdi)
+- Roller/belt operations (RollerFrontRoll, RollerBackRoll, RollerLeftLoad, etc.)
+- Jack operations (JackLoad, JackUnload, JackStop, JackSetHeight)
+- Fork operations (SetForkHeight, StopFork)
+- Calibration (Calibrate, EndCalibrate, CalibResult)
+- SLAM operations (Slam, EndSlam)
+- Container and goods management
+- And many more...
+
+Examples:
+- `LoadJackRequest` - Jacking load (API 6070)
+- `UnloadJackRequest` - Jacking unload (API 6071)
+
+### Push APIs (2 variants)
+
+- Push configuration and push data operations
+
+### Kernel APIs (3 variants)
+
+- Shutdown, Reboot, ResetFirmware
 
 ## Examples
 

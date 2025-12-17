@@ -152,7 +152,7 @@ impl_api_request!(RobotEmergencyStatusRequest, ApiRequest::State(StateApi::Emerg
 impl_api_request!(RobotIODataRequest, ApiRequest::State(StateApi::Io), res: StatusMessage);
 impl_api_request!(RobotTaskStatusRequest, ApiRequest::State(StateApi::Task), res: StatusMessage);
 impl_api_request!(RobotRelocationStatusRequest, ApiRequest::State(StateApi::Reloc), res: StatusMessage);
-impl_api_request!(RobotLoadMapStatusRequest, ApiRequest::State(StateApi::Loadmap), res: StatusMessage);
+impl_api_request!(RobotLoadMapStatusRequest, ApiRequest::State(StateApi::LoadMap), res: StatusMessage);
 impl_api_request!(RobotSlamStatusRequest, ApiRequest::State(StateApi::Slam), res: StatusMessage);
 impl_api_request!(JackStatusRequest, ApiRequest::State(StateApi::Jack), res: StatusMessage);
 impl_api_request!(RobotAlarmStatusRequest, ApiRequest::State(StateApi::Alarm), res: StatusMessage);
@@ -165,9 +165,9 @@ impl_api_request!(RobotParamsRequest, ApiRequest::State(StateApi::Params), res: 
 // Control API requests
 impl_api_request!(StopExerciseRequest, ApiRequest::Control(ControlApi::Stop), res: StatusMessage);
 impl_api_request!(RelocateRequest, ApiRequest::Control(ControlApi::Reloc), res: StatusMessage);
-impl_api_request!(ConfirmLocationRequest, ApiRequest::Control(ControlApi::Comfirmloc), res: StatusMessage);
+impl_api_request!(ConfirmLocationRequest, ApiRequest::Control(ControlApi::ComfirmLoc), res: StatusMessage);
 impl_api_request!(OpenLoopMotionRequest, ApiRequest::Control(ControlApi::Motion), res: StatusMessage);
-impl_api_request!(SwitchMapRequest, ApiRequest::Control(ControlApi::Loadmap), res: StatusMessage);
+impl_api_request!(SwitchMapRequest, ApiRequest::Control(ControlApi::LoadMap), res: StatusMessage);
 
 // Navigation API requests
 impl_api_request!(PauseTaskRequest, ApiRequest::Nav(NavApi::Pause), res: StatusMessage);
@@ -221,7 +221,7 @@ pub enum StateApi {
     /// Query Robot Localization Status
     Reloc = 1021,
     /// Query Robot Map Loading Status
-    Loadmap = 1022,
+    LoadMap = 1022,
     /// Query Scanning Status of Robot
     Slam = 1025,
     /// Query Robot Jacking Status
@@ -251,7 +251,7 @@ pub enum StateApi {
     /// Query Station Information of Currently Loaded Map
     Station = 1301,
     /// Query MD5 Value of Specified Map List
-    Mapmd5 = 1302,
+    MapMd5 = 1302,
     /// Query the Path between Any Two Points
     GetPath = 1303,
     /// Query Robot Parameters
@@ -261,7 +261,7 @@ pub enum StateApi {
     /// Query List of Robot Scripts
     ScriptInfo = 1506,
     /// Query List of Robot Script Details
-    ScriptDetailslist = 1507,
+    ScriptDetailsList = 1507,
     /// Query Default Parameters of Robot Script
     ScriptArgs = 1508,
     /// Query Robot Support Calibration List
@@ -271,33 +271,33 @@ pub enum StateApi {
     /// Query Robot Calibration File
     CalibData = 1511,
     /// Query 3D QR Code During Mapping
-    Tag3d = 1665,
+    Tag3D = 1665,
     /// Query Status of Robotic Arm
-    Armstatus = 1669,
+    ArmStatus = 1669,
     /// Calculate Coordinate Transformation of Robotic Arms
-    Armcalculate = 1670,
+    ArmCalculate = 1670,
     /// Robotic Arm binTask
-    Armtask = 1671,
+    ArmTask = 1671,
     /// Robotic Arm Motion Control
-    Armmove = 1673,
+    ArmMove = 1673,
     /// Robotic Arm Teaching Panel Control
-    Armoperation = 1674,
+    ArmOperation = 1674,
     /// Query the Point Cloud Image of the Currently Recognized Camera
-    Cloudprojection = 1675,
+    CloudProjection = 1675,
     /// Emulation from File Recognition
-    Recofiles = 1676,
+    RecoFiles = 1676,
     /// Query Driver Params
-    Canframe = 1750,
+    CanFrame = 1750,
     /// Query GNSS Connection Status
-    Gnsscheck = 1760,
+    GnssCheck = 1760,
     /// Query List of GNSS Devices
     GnssList = 1761,
     /// Query List of Robot Files
-    Listfile = 1798,
+    ListFile = 1798,
     /// Upload the Robot File
-    Uploadfile = 1799,
+    UploadFile = 1799,
     /// Download the Robot File
-    Downloadfile = 1800,
+    DownloadFile = 1800,
     /// Query Storage Bin Information Seen by Robot
     Bins = 1803,
     /// Query Robot Sound Status
@@ -307,13 +307,13 @@ pub enum StateApi {
     /// Query Transparent Data
     TransparentData = 1900,
     /// Run Start Battery Script
-    Startbatteryscript = 1901,
+    StartBatteryScript = 1901,
     /// Stop Robot Battery Script
-    Stopbatteryscript = 1902,
+    StopBatteryScript = 1902,
     /// Start Ambient Lamp Script
-    Startdmxscript = 1903,
+    StartDmxScript = 1903,
     /// Stop Ambient Lamp Script
-    Stopdmxscript = 1904,
+    StopDmxScript = 1904,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -324,17 +324,17 @@ pub enum ControlApi {
     /// Relocation
     Reloc = 2002,
     /// Confirm Correct Location
-    Comfirmloc = 2003,
+    ComfirmLoc = 2003,
     /// Cancel Relocation
-    Cancelreloc = 2004,
+    CancelReloc = 2004,
     /// Open Loop Motion
     Motion = 2010,
     /// Switch Map
-    Loadmap = 2022,
+    LoadMap = 2022,
     /// Clear Motor Encoder
-    Clearmotorencoder = 2024,
+    ClearMotorEncoder = 2024,
     /// Upload and Load Map
-    UploadAndLoadmap = 2025,
+    UploadAndLoadMap = 2025,
     /// Clear Weight Sensor Value
     ClearWeightdevvalue = 2026,
 }
@@ -363,17 +363,17 @@ pub enum NavApi {
     /// Enable and Disable Paths
     Path = 3059,
     /// Designated Path Navigation
-    MoveToTargetlist = 3066,
+    MoveToTargetList = 3066,
     /// Clear Specified Path Navigation
-    Cleartargetlist = 3067,
+    ClearTargetList = 3067,
     /// Clear Specified Navigation Path with Task ID
-    Safeclearmovements = 3068,
+    SafeClearMovements = 3068,
     /// Query Task Chain
-    TasklistStatus = 3101,
+    TaskListStatus = 3101,
     /// Execute Pre-Stored Tasks
-    TasklistName = 3106,
+    TaskListName = 3106,
     /// Query Robot Task Chain List
-    TasklistList = 3115,
+    TaskListList = 3115,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -384,27 +384,27 @@ pub enum ConfigApi {
     /// Release Control
     Unlock = 4006,
     /// Clear Robot's All Errors
-    Clearallerrors = 4009,
+    ClearAllErrors = 4009,
     /// Load Map to Robot
-    Uploadmap = 4010,
+    UploadMap = 4010,
     /// Download Maps from Robots
-    Downloadmap = 4011,
+    DownloadMap = 4011,
     /// Delete Map in Robot
-    Removemap = 4012,
+    RemoveMap = 4012,
     /// Upload Robot Script
-    Uploadscript = 4021,
+    UploadScript = 4021,
     /// Download Robot Script
-    Downloadscript = 4022,
+    DownloadScript = 4022,
     /// Delete Robot Script
-    Removescript = 4023,
+    RemoveScript = 4023,
     /// Configure Robot Push Port
     Push = 4091,
     /// Set Robot Params Temporarily
-    Setparams = 4100,
+    SetParams = 4100,
     /// Set Robot Params Permanently
-    Saveparams = 4101,
+    SaveParams = 4101,
     /// Restore Robot Params
-    Reloadparams = 4102,
+    ReloadParams = 4102,
     /// Configure Ultrasonic
     Ultrasonic = 4130,
     /// Configure DI
@@ -424,19 +424,19 @@ pub enum ConfigApi {
     /// Clear the Robot.cp File
     CalibClearAll = 4209,
     /// Add Dynamic Obstacles (Robot Coordinate System)
-    Addobstacle = 4350,
+    AddObstacle = 4350,
     /// Add Dynamic Obstacles (World Coordinate System)
-    Addgobstacle = 4351,
+    AddGObstacle = 4351,
     /// Remove Dynamic Obstacles
-    Removeobstacle = 4352,
+    RemoveObstacle = 4352,
     /// 3D QR Code Mapping
-    Tag3dmapping = 4353,
+    Tag3DMapping = 4353,
     /// Clear Goods Shape
-    ClearGoodsshape = 4356,
+    ClearGoodsShape = 4356,
     /// Set Shelf Description File
-    SetShelfshape = 4357,
+    SetShelfShape = 4357,
     /// Set Driver Params
-    SendCanframe = 4400,
+    SendCanFrame = 4400,
     /// Reset Running Info
     ClearOdo = 4450,
     /// Reset GNSS Configuration
@@ -448,13 +448,13 @@ pub enum ConfigApi {
     /// Upload Handle Custom Binding Event
     JoystickBindKeymap = 4470,
     /// Set Third-Party Error
-    Seterror = 4800,
+    SetError = 4800,
     /// Clear Third-Party Error
-    Clearerror = 4801,
+    ClearError = 4801,
     /// Set Third-Party Warning
-    Setwarning = 4802,
+    SetWarning = 4802,
     /// Clear Third-Party Warning
-    Clearwarning = 4803,
+    ClearWarning = 4803,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -474,15 +474,15 @@ pub enum PeripheralApi {
     /// Play Audio
     PlayAudio = 6000,
     /// Set DO
-    Setdo = 6001,
+    SetDo = 6001,
     /// Batch Set DO
-    Setdos = 6002,
+    SetDos = 6002,
     /// Set Relay
-    Setrelay = 6003,
+    SetRelay = 6003,
     /// Soft Estop
-    Softemc = 6004,
+    SoftEmc = 6004,
     /// Set Charging Relay
-    Setchargingrelay = 6005,
+    SetChargingRelay = 6005,
     /// Pause Audio
     PauseAudio = 6010,
     /// Resume Audio
@@ -490,7 +490,7 @@ pub enum PeripheralApi {
     /// Stop Playing Audio
     StopAudio = 6012,
     /// Set Virtual DI
-    Setvdi = 6020,
+    SetVdi = 6020,
     /// Upload Audio Files
     UploadAudio = 6030,
     /// Download Audio Files
@@ -560,11 +560,11 @@ pub enum PeripheralApi {
     /// Start Map Scanning
     Slam = 6100,
     /// End SLAM
-    Endslam = 6101,
+    EndSlam = 6101,
     /// Start Calibration
     Calibrate = 6110,
     /// Cancel Calibration
-    Endcalibrate = 6111,
+    EndCalibrate = 6111,
     /// Get the Current Calibration Result
     CalibResult = 6112,
     /// Get the Current Calibration Result
