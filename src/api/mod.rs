@@ -153,7 +153,7 @@ impl_api_request!(RobotLidarDataRequest, ApiRequest::State(StateApi::Laser), res
 impl_api_request!(RobotCurrentAreaRequest, ApiRequest::State(StateApi::Area), res: StatusMessage);
 impl_api_request!(RobotEmergencyStatusRequest, ApiRequest::State(StateApi::Emergency), res: StatusMessage);
 impl_api_request!(RobotIODataRequest, ApiRequest::State(StateApi::Io), res: StatusMessage);
-impl_api_request!(RobotTaskStatusRequest, ApiRequest::State(StateApi::Task), res: StatusMessage);
+impl_api_request!(TaskStatusRequest, ApiRequest::State(StateApi::Task), res: TaskStatus);
 impl_api_request!(RobotRelocationStatusRequest, ApiRequest::State(StateApi::Reloc), res: StatusMessage);
 impl_api_request!(RobotLoadMapStatusRequest, ApiRequest::State(StateApi::LoadMap), res: StatusMessage);
 impl_api_request!(RobotSlamStatusRequest, ApiRequest::State(StateApi::Slam), res: StatusMessage);

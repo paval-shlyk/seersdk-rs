@@ -10,6 +10,17 @@ pub struct StatusMessage {
     pub timestamp: Option<String>,
 }
 
+impl StatusMessage {
+    //fixme: to weird impl
+    pub fn into_result(self) -> Result<(), StatusMessage> {
+        if self.code == StatusCode::Success {
+            Ok(())
+        } else {
+            Err(self)
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, num_enum::FromPrimitive)]
 #[repr(u32)]
 pub enum StatusCode {
@@ -159,6 +170,20 @@ pub enum BlockReason {
     Custom,
 }
 
+impl std::fmt::Display for BlockReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let description = match self {
+            BlockReason::Laser => "Laser Obstacle",
+            BlockReason::Fallingdown => "Falling Down",
+            BlockReason::Collision => "Collision Detected",
+            BlockReason::Infrared => "Infrared Obstacle",
+            BlockReason::Custom => "Custom Reason",
+        };
+
+        write!(f, "{}", description)
+    }
+}
+
 impl<'de> serde::Deserialize<'de> for BlockReason {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -189,8 +214,8 @@ pub struct BlockStatus {
     #[serde(rename = "block_y", default)]
     pub y: Option<f64>,
 
-    #[serde(rename = "ret_code", default)]
-    pub code: Option<StatusCode>,
+    #[serde(rename = "ret_code")]
+    pub code: StatusCode,
     #[serde(rename = "err_msg", default)]
     pub message: String,
 }
