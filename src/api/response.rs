@@ -312,7 +312,8 @@ pub struct JackStatus {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct NavStatus {
-    pub state: TaskState,
+    #[serde(rename = "task_status")]
+    pub status: TaskStatus,
     #[serde(rename = "task_type")]
     pub ty: TaskType,
     pub target_id: PointId,
@@ -333,6 +334,7 @@ pub struct NavStatus {
     pub move_status_info: String,
 
     /// API Error Code
+    #[serde(rename = "ret_code", default)]
     pub code: Option<StatusCode>,
     /// API Upload Timestamp
     pub create_on: Option<String>,
@@ -357,7 +359,7 @@ impl_serde_for_num_enum!(TaskType);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, num_enum::FromPrimitive)]
 #[repr(u32)]
-pub enum TaskState {
+pub enum TaskStatus {
     #[num_enum(default)]
     None = 0,
     Waiting = 1,
@@ -370,16 +372,16 @@ pub enum TaskState {
     NotFound = 404,
 }
 
-impl_serde_for_num_enum!(TaskState);
+impl_serde_for_num_enum!(TaskStatus);
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct TaskStateItem {
+pub struct TaskStatusItem {
     pub task_id: TaskId,
-    pub state: TaskState,
+    pub status: TaskStatus,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct TaskStatus {
+pub struct TaskPackage {
     /// The station closest to the robot within a certain linear distance (this distance is a
     pub closest_target: PointId,
     /// The "source_id" in the navigation task currently being executed by the robot
@@ -394,7 +396,7 @@ pub struct TaskStatus {
     pub distance: f64,
 
     #[serde(rename = "task_status_list")]
-    pub tasks: Vec<TaskStateItem>,
+    pub tasks: Vec<TaskStatusItem>,
     /// During the navigation process, some prompts from the robot to the user can be output to the
     /// front end. This field does not participate in actual logical judgment
     pub info: String,

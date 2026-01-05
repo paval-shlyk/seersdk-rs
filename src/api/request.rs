@@ -121,6 +121,23 @@ pub enum MoveMethod {
     Backward,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct GetNavStatus {
+    /// Whether to return only simple data, true = yes, false = no, default is no
+    pub simple: Option<bool>,
+}
+
+impl GetNavStatus {
+    pub fn new() -> Self {
+        Self { simple: None }
+    }
+
+    pub fn with_simple(mut self, simple: bool) -> Self {
+        self.simple = Some(simple);
+        self
+    }
+}
+
 #[derive(
     Debug, Clone, serde::Serialize, serde::Deserialize, Default, PartialEq,
 )]
@@ -234,9 +251,6 @@ pub struct GetTaskStatus {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct GetNavStatus {}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MoveDesignedPath {
     #[serde(rename = "move_task_list")]
     pub path: Vec<MoveToTarget>,
@@ -246,6 +260,22 @@ impl MoveDesignedPath {
     pub fn new(path: impl IntoIterator<Item = MoveToTarget>) -> Self {
         Self {
             path: path.into_iter().collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TaskPackageIds {
+    ///Specify the task_id of the task to be queried in the array.
+    ///If the array is empty, the response will also be empty;
+    ///If this field is omitted, the status of the most recently completed task and the status of all incomplete tasks of the robot will be returned.
+    pub task_ids: Vec<String>,
+}
+
+impl FromIterator<String> for TaskPackageIds {
+    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> Self {
+        Self {
+            task_ids: iter.into_iter().collect(),
         }
     }
 }
