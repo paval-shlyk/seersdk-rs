@@ -37,39 +37,39 @@ struct RobotState {
     id: String,
     version: String,
     model: String,
-    
+
     // Position and navigation
     x: f64,
     y: f64,
     angle: f64,
     confidence: f64,
-    
+
     // Battery
     battery_level: f64,
     battery_temp: f64,
     charging: bool,
     voltage: f64,
     current: f64,
-    
+
     // Status
     is_blocked: bool,
     block_reason: Option<u8>,
-    
+
     // Navigation
     nav_status: u32, // 0=none, 1=waiting, 2=running, 3=suspended, 4=completed, 5=failed
     nav_type: u32,
     target_id: String,
     target_point: [f64; 3],
-    
+
     // Jack
     jack_height: f64,
     jack_has_payload: bool,
     jack_enabled: bool,
-    
+
     // Odometry
     mileage: f64,
     total_time: f64,
-    
+
     // Map
     current_map: String,
 }
@@ -80,33 +80,33 @@ impl Default for RobotState {
             id: "MOCK_ROBOT_001".to_string(),
             version: "v1.0.0-mock".to_string(),
             model: "RBK-MOCK".to_string(),
-            
+
             x: 0.0,
             y: 0.0,
             angle: 0.0,
             confidence: 0.98,
-            
+
             battery_level: 0.85,
             battery_temp: 25.0,
             charging: false,
             voltage: 48.0,
             current: 2.5,
-            
+
             is_blocked: false,
             block_reason: None,
-            
+
             nav_status: 0,
             nav_type: 0,
             target_id: String::new(),
             target_point: [0.0, 0.0, 0.0],
-            
+
             jack_height: 0.0,
             jack_has_payload: false,
             jack_enabled: true,
-            
+
             mileage: 1234.56,
             total_time: 3600000.0,
-            
+
             current_map: "default_map".to_string(),
         }
     }
@@ -125,9 +125,9 @@ fn encode_response(api_no: u16, body_str: &str, flow_no: u16) -> BytesMut {
     let body_bytes = body_str.as_bytes();
     let body_len = body_bytes.len() as u32;
     let head_size = 16;
-    
+
     let mut buf = BytesMut::with_capacity(head_size + body_bytes.len());
-    
+
     buf.put_u8(START_MARK);
     buf.put_u8(PROTO_VERSION);
     buf.put_u16(flow_no);
@@ -135,7 +135,7 @@ fn encode_response(api_no: u16, body_str: &str, flow_no: u16) -> BytesMut {
     buf.put_u16(api_no);
     buf.put_slice(&[0u8; 6]); // reserved
     buf.put_slice(body_bytes);
-    
+
     buf
 }
 
@@ -156,7 +156,7 @@ impl RbkDecoder {
             body_size: -1,
         }
     }
-    
+
     fn decode(&mut self, buf: &mut BytesMut) -> Option<RbkFrame> {
         if !self.started {
             while buf.has_remaining() {
@@ -169,41 +169,41 @@ impl RbkDecoder {
                 return None;
             }
         }
-        
+
         if self.body_size < 0 {
             if buf.remaining() < 15 {
                 return None;
             }
-            
+
             let _version = buf.get_u8();
             self.flow_no = buf.get_u16();
             self.body_size = buf.get_u32() as i32;
             self.api_no = buf.get_u16();
             buf.advance(6);
         }
-        
+
         if buf.remaining() < self.body_size as usize {
             return None;
         }
-        
+
         let body = if self.body_size == 0 {
             String::new()
         } else {
             let body_bytes = buf.split_to(self.body_size as usize);
             String::from_utf8_lossy(&body_bytes).to_string()
         };
-        
+
         let frame = RbkFrame {
             flow_no: self.flow_no,
             api_no: self.api_no,
             body,
         };
-        
+
         self.started = false;
         self.flow_no = 0;
         self.api_no = 0;
         self.body_size = -1;
-        
+
         Some(frame)
     }
 }
@@ -218,9 +218,12 @@ fn get_timestamp() -> String {
 }
 
 /// Handle API request and generate response
-async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> String {
+async fn handle_request(
+    state: Arc<RwLock<RobotState>>,
+    frame: RbkFrame,
+) -> String {
     let api_no = frame.api_no;
-    
+
     // State APIs (1000-1999)
     match api_no {
         1000 => {
@@ -232,7 +235,8 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
                 "model": s.model,
                 "ret_code": 0,
                 "err_msg": ""
-            }).to_string()
+            })
+            .to_string()
         }
         1002 => {
             // OperationInfo - Running info
@@ -246,7 +250,8 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
                 "controller_voltage": 12.0,
                 "ret_code": 0,
                 "err_msg": ""
-            }).to_string()
+            })
+            .to_string()
         }
         1004 => {
             // RobotPose - Location
@@ -258,7 +263,8 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
                 "confidence": s.confidence,
                 "ret_code": 0,
                 "err_msg": ""
-            }).to_string()
+            })
+            .to_string()
         }
         1005 => {
             // RobotSpeed
@@ -268,7 +274,8 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
                 "w": 0.1,
                 "ret_code": 0,
                 "err_msg": ""
-            }).to_string()
+            })
+            .to_string()
         }
         1006 => {
             // BlockStatus
@@ -280,7 +287,8 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
                 "block_y": null,
                 "ret_code": 0,
                 "err_msg": ""
-            }).to_string()
+            })
+            .to_string()
         }
         1007 => {
             // BatteryStatus
@@ -293,7 +301,8 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
                 "current": s.current,
                 "ret_code": 0,
                 "err_msg": ""
-            }).to_string()
+            })
+            .to_string()
         }
         1020 => {
             // NavStatus
@@ -309,7 +318,8 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
                 "ret_code": 0,
                 "create_on": get_timestamp(),
                 "err_msg": ""
-            }).to_string()
+            })
+            .to_string()
         }
         1027 => {
             // JackStatus
@@ -327,7 +337,8 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
                 "ret_code": 0,
                 "err_msg": "",
                 "create_on": get_timestamp()
-            }).to_string()
+            })
+            .to_string()
         }
         1110 => {
             // TaskPackage
@@ -343,7 +354,8 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
                 "ret_code": 0,
                 "err_msg": "",
                 "create_on": get_timestamp()
-            }).to_string()
+            })
+            .to_string()
         }
         1300 => {
             // Map info
@@ -353,9 +365,10 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
                 "map_list": ["default_map", "warehouse_map"],
                 "ret_code": 0,
                 "err_msg": ""
-            }).to_string()
+            })
+            .to_string()
         }
-        
+
         // Control APIs (2000-2999)
         2000 => {
             // Stop
@@ -364,36 +377,44 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
             json!({
                 "ret_code": 0,
                 "err_msg": "Stopped successfully"
-            }).to_string()
+            })
+            .to_string()
         }
         2002 => {
             // Relocation
             json!({
                 "ret_code": 0,
                 "err_msg": "Relocation initiated"
-            }).to_string()
+            })
+            .to_string()
         }
         2003 => {
             // Confirm location
             json!({
                 "ret_code": 0,
                 "err_msg": "Location confirmed"
-            }).to_string()
+            })
+            .to_string()
         }
         2022 => {
             // Switch map
             let mut s = state.write().await;
-            if let Ok(req) = serde_json::from_str::<serde_json::Value>(&frame.body) {
-                if let Some(map_name) = req.get("map_name").and_then(|v| v.as_str()) {
+            if let Ok(req) =
+                serde_json::from_str::<serde_json::Value>(&frame.body)
+            {
+                if let Some(map_name) =
+                    req.get("map_name").and_then(|v| v.as_str())
+                {
                     s.current_map = map_name.to_string();
                 }
             }
             json!({
                 "ret_code": 0,
                 "err_msg": "Map switched successfully"
-            }).to_string()
+            })
+            .to_string()
         }
-        
+
         // Navigation APIs (3000-3999)
         3001 => {
             // Pause navigation
@@ -402,7 +423,8 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
             json!({
                 "ret_code": 0,
                 "err_msg": "Navigation paused"
-            }).to_string()
+            })
+            .to_string()
         }
         3002 => {
             // Resume navigation
@@ -411,7 +433,8 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
             json!({
                 "ret_code": 0,
                 "err_msg": "Navigation resumed"
-            }).to_string()
+            })
+            .to_string()
         }
         3003 => {
             // Cancel navigation
@@ -420,87 +443,98 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
             json!({
                 "ret_code": 0,
                 "err_msg": "Navigation canceled"
-            }).to_string()
+            })
+            .to_string()
         }
         3051 => {
             // MoveToTarget
             let mut s = state.write().await;
-            
-            if let Ok(req) = serde_json::from_str::<serde_json::Value>(&frame.body) {
+
+            if let Ok(req) =
+                serde_json::from_str::<serde_json::Value>(&frame.body)
+            {
                 if let Some(target) = req.get("id").and_then(|v| v.as_str()) {
                     s.target_id = target.to_string();
                     s.nav_status = 2; // Running
                     s.nav_type = 3; // Path nav
-                    
+
                     // Simulate moving towards target (mock position update)
                     s.x += 0.1;
                     s.y += 0.1;
                 }
             }
-            
+
             json!({
                 "ret_code": 0,
                 "err_msg": "Navigation started",
                 "create_on": get_timestamp()
-            }).to_string()
+            })
+            .to_string()
         }
         3066 => {
             // MoveToTargetList
             let mut s = state.write().await;
             s.nav_status = 2; // Running
             s.nav_type = 3;
-            
+
             json!({
                 "ret_code": 0,
                 "err_msg": "Path navigation started",
                 "create_on": get_timestamp()
-            }).to_string()
+            })
+            .to_string()
         }
-        
+
         // Config APIs (4000-5999)
         4005 => {
             // Lock control
             json!({
                 "ret_code": 0,
                 "err_msg": "Control locked"
-            }).to_string()
+            })
+            .to_string()
         }
         4006 => {
             // Unlock control
             json!({
                 "ret_code": 0,
                 "err_msg": "Control unlocked"
-            }).to_string()
+            })
+            .to_string()
         }
         4009 => {
             // Clear all errors
             json!({
                 "ret_code": 0,
                 "err_msg": "All errors cleared"
-            }).to_string()
+            })
+            .to_string()
         }
         4100 => {
             // Set params
             json!({
                 "ret_code": 0,
                 "err_msg": "Parameters set"
-            }).to_string()
+            })
+            .to_string()
         }
-        
+
         // Peripheral APIs (6000-6998)
         6000 => {
             // Play audio
             json!({
                 "ret_code": 0,
                 "err_msg": "Audio playing"
-            }).to_string()
+            })
+            .to_string()
         }
         6001 => {
             // Set DO
             json!({
                 "ret_code": 0,
                 "err_msg": "DO set"
-            }).to_string()
+            })
+            .to_string()
         }
         6070 => {
             // Jack load
@@ -510,7 +544,8 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
             json!({
                 "ret_code": 0,
                 "err_msg": "Jack loading"
-            }).to_string()
+            })
+            .to_string()
         }
         6071 => {
             // Jack unload
@@ -520,51 +555,60 @@ async fn handle_request(state: Arc<RwLock<RobotState>>, frame: RbkFrame) -> Stri
             json!({
                 "ret_code": 0,
                 "err_msg": "Jack unloading"
-            }).to_string()
+            })
+            .to_string()
         }
         6072 => {
             // Jack stop
             json!({
                 "ret_code": 0,
                 "err_msg": "Jack stopped"
-            }).to_string()
+            })
+            .to_string()
         }
         6073 => {
             // Set jack height
             let mut s = state.write().await;
-            if let Ok(req) = serde_json::from_str::<serde_json::Value>(&frame.body) {
-                if let Some(height) = req.get("height").and_then(|v| v.as_f64()) {
+            if let Ok(req) =
+                serde_json::from_str::<serde_json::Value>(&frame.body)
+            {
+                if let Some(height) = req.get("height").and_then(|v| v.as_f64())
+                {
                     s.jack_height = height;
                 }
             }
             json!({
                 "ret_code": 0,
                 "err_msg": "Jack height set"
-            }).to_string()
+            })
+            .to_string()
         }
-        
+
         // Kernel APIs (7000-7999)
         5000 => {
             // Shutdown
             json!({
                 "ret_code": 0,
                 "err_msg": "Shutting down (mock)"
-            }).to_string()
+            })
+            .to_string()
         }
         5003 => {
             // Reboot
             json!({
                 "ret_code": 0,
                 "err_msg": "Rebooting (mock)"
-            }).to_string()
+            })
+            .to_string()
         }
-        
+
         _ => {
             // Unknown API
             json!({
                 "ret_code": 40000,
                 "err_msg": format!("Unknown API: {}", api_no)
-            }).to_string()
+            })
+            .to_string()
         }
     }
 }
@@ -576,11 +620,11 @@ async fn handle_client(
     port: u16,
 ) {
     println!("New connection on port {}", port);
-    
+
     let mut decoder = RbkDecoder::new();
     let mut buf = BytesMut::with_capacity(4096);
     let mut read_buf = vec![0u8; 4096];
-    
+
     loop {
         match stream.read(&mut read_buf).await {
             Ok(0) => {
@@ -589,15 +633,20 @@ async fn handle_client(
             }
             Ok(n) => {
                 buf.extend_from_slice(&read_buf[..n]);
-                
+
                 while let Some(frame) = decoder.decode(&mut buf) {
-                    println!("Received API {} on port {}: {}", frame.api_no, port, frame.body);
-                    
+                    println!(
+                        "Received API {} on port {}: {}",
+                        frame.api_no, port, frame.body
+                    );
+
                     let api_no = frame.api_no;
                     let flow_no = frame.flow_no;
-                    let response_body = handle_request(state.clone(), frame).await;
-                    let response_bytes = encode_response(api_no, &response_body, flow_no);
-                    
+                    let response_body =
+                        handle_request(state.clone(), frame).await;
+                    let response_bytes =
+                        encode_response(api_no, &response_body, flow_no);
+
                     if let Err(e) = stream.write_all(&response_bytes).await {
                         eprintln!("Failed to write response: {}", e);
                         break;
@@ -622,9 +671,9 @@ async fn start_server(port: u16, state: Arc<RwLock<RobotState>>) {
             return;
         }
     };
-    
+
     println!("Server listening on {}", addr);
-    
+
     loop {
         match listener.accept().await {
             Ok((stream, _addr)) => {
@@ -634,7 +683,10 @@ async fn start_server(port: u16, state: Arc<RwLock<RobotState>>) {
                 });
             }
             Err(e) => {
-                eprintln!("Failed to accept connection on port {}: {}", port, e);
+                eprintln!(
+                    "Failed to accept connection on port {}: {}",
+                    port, e
+                );
             }
         }
     }
@@ -642,31 +694,32 @@ async fn start_server(port: u16, state: Arc<RwLock<RobotState>>) {
 
 /// Background task to simulate robot state changes
 async fn simulate_robot_behavior(state: Arc<RwLock<RobotState>>) {
-    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
-    
+    let mut interval =
+        tokio::time::interval(tokio::time::Duration::from_secs(1));
+
     loop {
         interval.tick().await;
-        
+
         let mut s = state.write().await;
-        
+
         // Simulate battery drain
         if !s.charging && s.battery_level > 0.1 {
             s.battery_level -= 0.0001;
         }
-        
+
         // Simulate navigation progress
         if s.nav_status == 2 {
             // Running
             s.x += 0.01;
             s.y += 0.01;
             s.mileage += 0.01;
-            
+
             // Random completion
             if s.mileage > 1250.0 {
                 s.nav_status = 4; // Completed
             }
         }
-        
+
         // Update total time
         s.total_time += 1000.0;
     }
@@ -676,15 +729,15 @@ async fn simulate_robot_behavior(state: Arc<RwLock<RobotState>>) {
 async fn main() {
     println!("=== Mock RBK Robot Server ===");
     println!("Starting mock robot server on all ports...\n");
-    
+
     let state = Arc::new(RwLock::new(RobotState::default()));
-    
+
     // Start behavior simulation
     let state_clone = state.clone();
     tokio::spawn(async move {
         simulate_robot_behavior(state_clone).await;
     });
-    
+
     // Start servers on all ports
     let ports = vec![
         (19204, "State APIs"),
@@ -694,9 +747,9 @@ async fn main() {
         (19208, "Kernel APIs"),
         (19210, "Peripheral APIs"),
     ];
-    
+
     let mut handles = vec![];
-    
+
     for (port, name) in ports {
         println!("Starting {} on port {}", name, port);
         let state = state.clone();
@@ -705,11 +758,11 @@ async fn main() {
         });
         handles.push(handle);
     }
-    
+
     println!("\n✓ All servers started successfully!");
     println!("  Connect to localhost with seersdk-rs client");
     println!("  Press Ctrl+C to stop\n");
-    
+
     // Wait for all servers
     for handle in handles {
         let _ = handle.await;

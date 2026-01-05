@@ -23,6 +23,8 @@ seersdk-rs = "1.0.0"
 
 ## Usage
 
+### Basic Usage with Real Robot
+
 ```rust
 use seersdk_rs::{RbkClient, BatteryStatusRequest};
 use std::time::Duration;
@@ -42,6 +44,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     Ok(())
 }
+```
+
+### Development Mode with Mock Server
+
+For development and testing without physical hardware:
+
+1. **Start the mock robot server** (in one terminal):
+```bash
+cargo run --example mock_robot_server
+```
+
+2. **Use the TUI client** (in another terminal):
+```bash
+cargo run --example tui_client -- localhost
+```
+
+Or connect programmatically:
+```rust
+let client = RbkClient::new("localhost");
+// ... use the client as normal
 ```
 
 ## API Categories
@@ -139,11 +161,104 @@ Examples:
 
 ## Examples
 
-See the `examples/` directory for more usage examples:
+The `examples/` directory contains several demonstration programs:
+
+### Basic Usage
+
+Query battery status from a real robot:
 
 ```bash
 cargo run --example battery_query
 ```
+
+### Mock Robot Server
+
+A standalone binary that emulates a complete RBK robot with mock navigation logic. Perfect for testing and development without physical hardware.
+
+```bash
+# Start the mock robot server
+cargo run --example mock_robot_server
+
+# The server listens on:
+# - Port 19204: State APIs (battery, position, etc.)
+# - Port 19205: Control APIs (stop, relocate, etc.)
+# - Port 19206: Navigation APIs (move, pause, resume, etc.)
+# - Port 19207: Config APIs (parameters, maps, etc.)
+# - Port 19208: Kernel APIs (shutdown, reboot)
+# - Port 19210: Peripheral APIs (jack, audio, I/O, etc.)
+```
+
+The mock server features:
+- Full RBK protocol implementation
+- Realistic robot state simulation (battery drain, navigation progress, position updates)
+- Support for all major API endpoints
+- Concurrent client connections
+
+### TUI Client
+
+An interactive Terminal User Interface for sending and receiving RBK messages. Uses the seersdk-rs crate to communicate with robots.
+
+```bash
+# Connect to mock server
+cargo run --example tui_client -- localhost
+
+# Or connect to a real robot
+cargo run --example tui_client -- 192.168.8.114
+```
+
+Features:
+- Interactive command-line interface with ratatui
+- Real-time message display
+- Support for common commands:
+  - `battery` / `bat` / `1` - Query battery status
+  - `position` / `pos` / `2` - Query robot position
+  - `info` / `3` - Query robot information
+  - `nav <target>` / `4` - Navigate to target
+  - `stop` / `5` - Stop navigation
+  - `pause` / `6` - Pause navigation
+  - `resume` / `7` - Resume navigation
+  - `jack load` / `8` - Load jack
+  - `jack unload` / `9` - Unload jack
+  - `help` - Show all available commands
+  - `clear` - Clear message history
+
+Controls:
+- Type commands in the input field
+- Press `Enter` to send
+- Press `Esc` or `q` (in normal mode) to quit
+- Press `i` to enter editing mode (from normal mode)
+
+### Test the Mock Server
+
+A simple test client that verifies the mock server is working correctly:
+
+```bash
+# Make sure the mock server is running first
+cargo run --example test_mock_server
+```
+
+## Testing
+
+Run the full test suite including integration tests:
+
+```bash
+# Run all tests (requires mock server to be running)
+cargo test
+
+# Run only unit tests
+cargo test --lib
+
+# Run only integration tests
+cargo test --test integration_tests
+```
+
+The integration tests verify:
+- Protocol communication correctness
+- Various API request/response types
+- Navigation commands
+- Control commands
+- Peripheral operations
+- Concurrent request handling
 
 ## Documentation
 

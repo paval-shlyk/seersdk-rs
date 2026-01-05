@@ -19,17 +19,23 @@
 //! - Tab: Cycle through input fields
 
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
+    event::{
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode,
+        KeyEventKind,
+    },
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{
+        EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode,
+        enable_raw_mode,
+    },
 };
 use ratatui::{
+    Frame, Terminal,
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph},
-    Frame, Terminal,
 };
 use seersdk_rs::*;
 use std::io;
@@ -58,20 +64,20 @@ impl App {
         let messages = vec![
             "=== RBK Robot TUI Client ===".to_string(),
             format!("Connected to: {}", robot_ip),
-                "".to_string(),
-                "Available Commands:".to_string(),
-                "  1. battery - Query battery status".to_string(),
-                "  2. position - Query robot position".to_string(),
-                "  3. info - Query robot information".to_string(),
-                "  4. nav <target> - Navigate to target".to_string(),
-                "  5. stop - Stop navigation".to_string(),
-                "  6. pause - Pause navigation".to_string(),
-                "  7. resume - Resume navigation".to_string(),
-                "  8. jack load - Load jack".to_string(),
-                "  9. jack unload - Unload jack".to_string(),
-                "".to_string(),
-                "Type a command and press Enter...".to_string(),
-            ];
+            "".to_string(),
+            "Available Commands:".to_string(),
+            "  1. battery - Query battery status".to_string(),
+            "  2. position - Query robot position".to_string(),
+            "  3. info - Query robot information".to_string(),
+            "  4. nav <target> - Navigate to target".to_string(),
+            "  5. stop - Stop navigation".to_string(),
+            "  6. pause - Pause navigation".to_string(),
+            "  7. resume - Resume navigation".to_string(),
+            "  8. jack load - Load jack".to_string(),
+            "  9. jack unload - Unload jack".to_string(),
+            "".to_string(),
+            "Type a command and press Enter...".to_string(),
+        ];
         Self {
             robot_ip,
             client,
@@ -129,8 +135,12 @@ impl App {
             "navstatus" => self.query_nav_status().await,
             "help" => {
                 self.add_message("Available commands:".to_string());
-                self.add_message("  battery, position, info, nav <target>".to_string());
-                self.add_message("  stop, pause, resume, jack <load|unload>".to_string());
+                self.add_message(
+                    "  battery, position, info, nav <target>".to_string(),
+                );
+                self.add_message(
+                    "  stop, pause, resume, jack <load|unload>".to_string(),
+                );
                 Ok(())
             }
             "clear" => {
@@ -138,7 +148,10 @@ impl App {
                 self.add_message("=== RBK Robot TUI Client ===".to_string());
                 Ok(())
             }
-            _ => Err(format!("Unknown command: {}. Type 'help' for available commands.", parts[0])),
+            _ => Err(format!(
+                "Unknown command: {}. Type 'help' for available commands.",
+                parts[0]
+            )),
         };
 
         match result {
@@ -152,10 +165,22 @@ impl App {
         match self.client.request(request, Duration::from_secs(5)).await {
             Ok(response) => {
                 self.add_message("Battery Status:".to_string());
-                self.add_message(format!("  Level: {:.1}%", response.battery_level * 100.0));
-                self.add_message(format!("  Voltage: {:.2}V", response.voltage));
-                self.add_message(format!("  Current: {:.2}A", response.current));
-                self.add_message(format!("  Temperature: {:.1}°C", response.battery_temp));
+                self.add_message(format!(
+                    "  Level: {:.1}%",
+                    response.battery_level * 100.0
+                ));
+                self.add_message(format!(
+                    "  Voltage: {:.2}V",
+                    response.voltage
+                ));
+                self.add_message(format!(
+                    "  Current: {:.2}A",
+                    response.current
+                ));
+                self.add_message(format!(
+                    "  Temperature: {:.1}°C",
+                    response.battery_temp
+                ));
                 self.add_message(format!("  Charging: {}", response.charging));
                 Ok(())
             }
@@ -170,8 +195,15 @@ impl App {
                 self.add_message("Robot Position:".to_string());
                 self.add_message(format!("  X: {:.3}m", response.x));
                 self.add_message(format!("  Y: {:.3}m", response.y));
-                self.add_message(format!("  Angle: {:.3}rad ({:.1}°)", response.angle, response.angle.to_degrees()));
-                self.add_message(format!("  Confidence: {:.1}%", response.confidence * 100.0));
+                self.add_message(format!(
+                    "  Angle: {:.3}rad ({:.1}°)",
+                    response.angle,
+                    response.angle.to_degrees()
+                ));
+                self.add_message(format!(
+                    "  Confidence: {:.1}%",
+                    response.confidence * 100.0
+                ));
                 Ok(())
             }
             Err(e) => Err(format!("Failed to query position: {}", e)),
@@ -198,9 +230,15 @@ impl App {
         match self.client.request(request, Duration::from_secs(5)).await {
             Ok(response) => {
                 if response.code == StatusCode::Success {
-                    self.add_message(format!("✓ Navigation started to target: {}", target));
+                    self.add_message(format!(
+                        "✓ Navigation started to target: {}",
+                        target
+                    ));
                 } else {
-                    self.add_message(format!("✗ Navigation failed: {}", response.message));
+                    self.add_message(format!(
+                        "✗ Navigation failed: {}",
+                        response.message
+                    ));
                 }
                 Ok(())
             }
@@ -308,18 +346,25 @@ fn ui(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // Title
-            Constraint::Min(10),    // Messages
-            Constraint::Length(3),  // Input
-            Constraint::Length(3),  // Help
+            Constraint::Length(3), // Title
+            Constraint::Min(10),   // Messages
+            Constraint::Length(3), // Input
+            Constraint::Length(3), // Help
         ])
         .split(f.area());
 
     // Title
-    let title = Paragraph::new(format!("RBK Robot TUI Client - Connected to: {}", app.robot_ip))
-        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
-        .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::ALL));
+    let title = Paragraph::new(format!(
+        "RBK Robot TUI Client - Connected to: {}",
+        app.robot_ip
+    ))
+    .style(
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD),
+    )
+    .alignment(Alignment::Center)
+    .block(Block::default().borders(Borders::ALL));
     f.render_widget(title, chunks[0]);
 
     // Messages area
@@ -343,18 +388,27 @@ fn ui(f: &mut Frame, app: &App) {
             InputMode::Normal => Style::default(),
             InputMode::Editing => Style::default().fg(Color::Yellow),
         })
-        .block(Block::default().borders(Borders::ALL).title("Command Input"));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Command Input"),
+        );
     f.render_widget(input_widget, chunks[2]);
 
     // Set cursor position
     if app.input_mode == InputMode::Editing {
-        f.set_cursor_position((chunks[2].x + app.cursor_position as u16 + 1, chunks[2].y + 1));
+        f.set_cursor_position((
+            chunks[2].x + app.cursor_position as u16 + 1,
+            chunks[2].y + 1,
+        ));
     }
 
     // Help text
     let help_text = match app.input_mode {
         InputMode::Normal => "Press 'i' to start editing, 'q' to quit",
-        InputMode::Editing => "Press 'Esc' to stop editing, 'Enter' to send command",
+        InputMode::Editing => {
+            "Press 'Esc' to stop editing, 'Enter' to send command"
+        }
     };
     let help = Paragraph::new(help_text)
         .style(Style::default().fg(Color::Gray))
