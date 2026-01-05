@@ -237,6 +237,26 @@ A simple test client that verifies the mock server is working correctly:
 cargo run --example test_mock_server
 ```
 
+### Comprehensive Demo
+
+A visual demonstration showing various API calls in action:
+
+```bash
+# Make sure the mock server is running first
+cargo run --example demo
+
+# Or connect to a real robot
+cargo run --example demo -- 192.168.8.114
+```
+
+This demo showcases:
+- Robot information queries
+- Battery status monitoring
+- Position tracking
+- Navigation commands (start, pause, resume, cancel)
+- Jack operations (load, height adjustment, unload)
+- Control commands (relocation, confirmation)
+
 ## Testing
 
 Run the full test suite including integration tests:
