@@ -584,7 +584,7 @@ async fn handle_request(
             .to_string()
         }
 
-        // Kernel APIs (7000-7999)
+        // Kernel APIs (5000, 5003, 5005 per KernelApi enum)
         5000 => {
             // Shutdown
             json!({

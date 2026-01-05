@@ -101,7 +101,7 @@ Examples:
 ### Control APIs (9 variants)
 
 Control operations including:
-- Stop, Reloc, ComfirmLoc, CancelReloc
+- Stop, Reloc, ConfirmLoc (ComfirmLoc in API), CancelReloc
 - Motion, LoadMap, ClearMotorEncoder
 - UploadAndLoadMap, ClearWeightdevvalue
 
