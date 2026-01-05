@@ -393,7 +393,7 @@ pub struct TaskPackage {
     pub percentage: f64,
     /// Projection distance of the robot to the "path corresponding to the currently executing
     /// navigation task
-    pub distance: f64,
+    pub distance: Option<f64>,
 
     #[serde(rename = "task_status_list")]
     pub tasks: Vec<TaskStatusItem>,
