@@ -154,7 +154,7 @@ impl_api_request!(RobotCurrentAreaRequest, ApiRequest::State(StateApi::Area), re
 impl_api_request!(RobotEmergencyStatusRequest, ApiRequest::State(StateApi::Emergency), res: StatusMessage);
 impl_api_request!(RobotIODataRequest, ApiRequest::State(StateApi::Io), res: StatusMessage);
 impl_api_request!(NavStatusRequest, ApiRequest::State(StateApi::Nav), req: GetNavStatus, res: NavStatus);
-impl_api_request!(TaskPackageRequest, ApiRequest::State(StateApi::TaskPackage), req: TaskPackageIds, res: TaskPackage);
+impl_api_request!(TaskStatusRequest, ApiRequest::State(StateApi::TaskPackage), req: GetTaskStatus, res: TaskPackage);
 impl_api_request!(RobotRelocationStatusRequest, ApiRequest::State(StateApi::Reloc), res: StatusMessage);
 impl_api_request!(RobotLoadMapStatusRequest, ApiRequest::State(StateApi::LoadMap), res: StatusMessage);
 impl_api_request!(RobotSlamStatusRequest, ApiRequest::State(StateApi::Slam), res: StatusMessage);

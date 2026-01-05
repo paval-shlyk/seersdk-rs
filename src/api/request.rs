@@ -246,11 +246,6 @@ impl SetJackHeight {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct GetTaskStatus {
-    pub task_ids: Vec<String>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MoveDesignedPath {
     #[serde(rename = "move_task_list")]
     pub path: Vec<MoveToTarget>,
@@ -265,14 +260,14 @@ impl MoveDesignedPath {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct TaskPackageIds {
+pub struct GetTaskStatus {
     ///Specify the task_id of the task to be queried in the array.
     ///If the array is empty, the response will also be empty;
     ///If this field is omitted, the status of the most recently completed task and the status of all incomplete tasks of the robot will be returned.
     pub task_ids: Vec<String>,
 }
 
-impl FromIterator<String> for TaskPackageIds {
+impl FromIterator<String> for GetTaskStatus {
     fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> Self {
         Self {
             task_ids: iter.into_iter().collect(),
