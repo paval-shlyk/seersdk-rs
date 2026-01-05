@@ -1,3 +1,5 @@
+use crate::{PointId, TaskId};
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct StatusMessage {
     #[serde(rename = "ret_code")]
@@ -6,6 +8,17 @@ pub struct StatusMessage {
     pub message: String,
     #[serde(rename = "create_on", default)]
     pub timestamp: Option<String>,
+}
+
+impl StatusMessage {
+    //fixme: to weird impl
+    pub fn into_result(self) -> Result<(), StatusMessage> {
+        if self.code == StatusCode::Success {
+            Ok(())
+        } else {
+            Err(self)
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, num_enum::FromPrimitive)]
@@ -87,7 +100,7 @@ macro_rules! impl_serde_for_num_enum {
 }
 
 impl_serde_for_num_enum!(StatusCode);
-impl_serde_for_num_enum!(JackOperation);
+impl_serde_for_num_enum!(JackOperationStatus);
 
 pub trait FromResponseBody: Sized {
     type Response: serde::de::DeserializeOwned;
@@ -157,6 +170,20 @@ pub enum BlockReason {
     Custom,
 }
 
+impl std::fmt::Display for BlockReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let description = match self {
+            BlockReason::Laser => "Laser Obstacle",
+            BlockReason::Fallingdown => "Falling Down",
+            BlockReason::Collision => "Collision Detected",
+            BlockReason::Infrared => "Infrared Obstacle",
+            BlockReason::Custom => "Custom Reason",
+        };
+
+        write!(f, "{}", description)
+    }
+}
+
 impl<'de> serde::Deserialize<'de> for BlockReason {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -187,8 +214,8 @@ pub struct BlockStatus {
     #[serde(rename = "block_y", default)]
     pub y: Option<f64>,
 
-    #[serde(rename = "ret_code", default)]
-    pub code: Option<StatusCode>,
+    #[serde(rename = "ret_code")]
+    pub code: StatusCode,
     #[serde(rename = "err_msg", default)]
     pub message: String,
 }
@@ -214,7 +241,7 @@ pub struct BatteryStatus {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, num_enum::FromPrimitive)]
 #[repr(u32)]
-pub enum JackOperation {
+pub enum JackOperationStatus {
     Rising = 0x0,
     RisingInPlace = 0x1,
     Lowering = 0x2,
@@ -256,7 +283,7 @@ pub struct JackStatus {
 
     /// Current jack operation
     #[serde(rename = "jack_state")]
-    pub operation: JackOperation,
+    pub operation: JackOperationStatus,
 
     #[serde(rename = "jack_isFull")]
     pub has_payload: bool,
@@ -281,6 +308,104 @@ pub struct JackStatus {
     /// API Upload timestamp
     #[serde(rename = "create_on", default)]
     pub timestamp: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct NavStatus {
+    #[serde(rename = "task_status")]
+    pub status: TaskStatus,
+    #[serde(rename = "task_type")]
+    pub ty: TaskType,
+    pub target_id: PointId,
+    /// Target point coordinates (x, y, angle)
+    pub target_point: [f64; 3],
+
+    /// Stations already passed on the current navigation path,
+    /// an array of stations, this field is only valid when task_type is 3.
+    /// All intermediate points already passed will be listed here
+    pub finished_path: Vec<PointId>,
+
+    /// Stations on the current navigation path that have not yet been passed,
+    /// represented as an array of stations, are only valid when task_type is 3.
+    /// All intermediate points that have not yet been passed will be listed here.
+    pub unfinished_path: Vec<PointId>,
+
+    /// Navigation Task Additional Information
+    pub move_status_info: String,
+
+    /// API Error Code
+    #[serde(rename = "ret_code", default)]
+    pub code: Option<StatusCode>,
+    /// API Upload Timestamp
+    pub create_on: Option<String>,
+    /// Error Message
+    #[serde(rename = "err_msg", default)]
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, num_enum::FromPrimitive)]
+#[repr(u32)]
+pub enum TaskType {
+    NoNav = 0,
+    FreeNavToPoint = 1,
+    FreeNavToSite = 2,
+    PathNavToSite = 3,
+    Manual = 7,
+    #[num_enum(default)]
+    Other = 100,
+}
+
+impl_serde_for_num_enum!(TaskType);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, num_enum::FromPrimitive)]
+#[repr(u32)]
+pub enum TaskStatus {
+    #[num_enum(default)]
+    None = 0,
+    Waiting = 1,
+    Running = 2,
+    Suspended = 3,
+    Completed = 4,
+    Failed = 5,
+    Canceled = 6,
+    OverTime = 7,
+    NotFound = 404,
+}
+
+impl_serde_for_num_enum!(TaskStatus);
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TaskStatusItem {
+    pub task_id: TaskId,
+    pub status: TaskStatus,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TaskPackage {
+    /// The station closest to the robot within a certain linear distance (this distance is a
+    pub closest_target: PointId,
+    /// The "source_id" in the navigation task currently being executed by the robot
+    pub source_name: TaskId,
+    /// The "id" of the navigation task currently being executed by the robot
+    pub target_name: TaskId,
+    /// In the navigation task currently being executed by the robot, for the corresponding path,
+    /// the proportion of the part that the robot has completed to the entire path
+    pub percentage: f64,
+    /// Projection distance of the robot to the "path corresponding to the currently executing
+    /// navigation task
+    pub distance: Option<f64>,
+
+    #[serde(rename = "task_status_list")]
+    pub tasks: Vec<TaskStatusItem>,
+    /// During the navigation process, some prompts from the robot to the user can be output to the
+    /// front end. This field does not participate in actual logical judgment
+    pub info: String,
+
+    #[serde(rename = "ret_code", default)]
+    pub code: Option<StatusCode>,
+    #[serde(rename = "err_msg", default)]
+    pub message: String,
+    pub create_on: Option<String>,
 }
 
 #[cfg(test)]
@@ -370,11 +495,12 @@ mod tests {
         assert_eq!(status.reason, Some(super::BlockReason::Fallingdown));
         assert_eq!(status.x, Some(1.5));
         assert_eq!(status.y, Some(2.5));
-        assert_eq!(status.code, Some(StatusCode::ParamTypeError));
+        assert_eq!(status.code, StatusCode::ParamTypeError);
         assert_eq!(status.message, "Parameter type error");
 
         let without_error_code = r#"
         {
+            "ret_code": 0,
             "blocked": false
         }"#;
         let status_no_code: super::BlockStatus =
@@ -383,7 +509,7 @@ mod tests {
         assert_eq!(status_no_code.reason, None);
         assert_eq!(status_no_code.x, None);
         assert_eq!(status_no_code.y, None);
-        assert_eq!(status_no_code.code, None);
+        assert_eq!(status_no_code.code, StatusCode::Success);
         assert_eq!(status_no_code.message, "");
     }
 }

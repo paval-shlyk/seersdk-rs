@@ -9,6 +9,9 @@ mod response;
 pub use request::*;
 pub use response::*;
 
+pub type TaskId = String;
+pub type PointId = String;
+
 /// API request enum representing all RBK robot APIs
 ///
 /// The RBK protocol organizes APIs into modules, each with its own port:
@@ -150,7 +153,8 @@ impl_api_request!(RobotLidarDataRequest, ApiRequest::State(StateApi::Laser), res
 impl_api_request!(RobotCurrentAreaRequest, ApiRequest::State(StateApi::Area), res: StatusMessage);
 impl_api_request!(RobotEmergencyStatusRequest, ApiRequest::State(StateApi::Emergency), res: StatusMessage);
 impl_api_request!(RobotIODataRequest, ApiRequest::State(StateApi::Io), res: StatusMessage);
-impl_api_request!(RobotTaskStatusRequest, ApiRequest::State(StateApi::Task), res: StatusMessage);
+impl_api_request!(NavStatusRequest, ApiRequest::State(StateApi::Nav), req: GetNavStatus, res: NavStatus);
+impl_api_request!(TaskStatusRequest, ApiRequest::State(StateApi::TaskPackage), req: GetTaskStatus, res: TaskPackage);
 impl_api_request!(RobotRelocationStatusRequest, ApiRequest::State(StateApi::Reloc), res: StatusMessage);
 impl_api_request!(RobotLoadMapStatusRequest, ApiRequest::State(StateApi::LoadMap), res: StatusMessage);
 impl_api_request!(RobotSlamStatusRequest, ApiRequest::State(StateApi::Slam), res: StatusMessage);
@@ -176,6 +180,7 @@ impl_api_request!(CancelTaskRequest, ApiRequest::Nav(NavApi::Cancel), res: Statu
 impl_api_request!(MoveToTargetRequest, ApiRequest::Nav(NavApi::MoveToTarget), req: MoveToTarget, res: StatusMessage);
 impl_api_request!(TranslateRequest, ApiRequest::Nav(NavApi::Translate), res: StatusMessage);
 impl_api_request!(TurnRequest, ApiRequest::Nav(NavApi::Turn), res: StatusMessage);
+impl_api_request!(MoveDesignedPathRequest, ApiRequest::Nav(NavApi::MoveToTargetList), req: MoveDesignedPath, res: StatusMessage);
 
 // Peripheral API requests
 impl_api_request!(LoadJackRequest, ApiRequest::Peripheral(PeripheralApi::JackLoad), res: StatusMessage);
@@ -217,7 +222,7 @@ pub enum StateApi {
     /// Query Robot Encoder Status
     Encoder = 1018,
     /// Query Robot Navigation Status
-    Task = 1020,
+    Nav = 1020,
     /// Query Robot Localization Status
     Reloc = 1021,
     /// Query Robot Map Loading Status
@@ -245,7 +250,7 @@ pub enum StateApi {
     /// Query Batch Data 3
     All3 = 1102,
     /// Query Robot Task Status Package
-    TaskStatusPackage = 1110,
+    TaskPackage = 1110,
     /// Query Loaded Map and Stored Map
     Map = 1300,
     /// Query Station Information of Currently Loaded Map
