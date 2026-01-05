@@ -178,12 +178,33 @@ pub struct MoveToTarget {
     pub jack_operation: Option<JackOperation>,
 }
 
+/// Macro to implement builder methods for MoveToTarget
+/// 3 argumens: method_name, field_name, field_type
+macro_rules! impl_move_to_target_builder {
+    ( $($method_name:ident : $field_name:ident = $field_type:ty),* $(,)? ) => {
+        $(
+            pub fn $method_name(mut self, value: $field_type) -> Self {
+                self.$field_name = value.into();
+                self
+            }
+        )*
+    };
+}
+
 impl MoveToTarget {
     pub fn new<T: Into<String>>(target: T) -> Self {
         Self {
             target: target.into(),
+            start: SELF_POSITION.to_string(),
             ..Default::default()
         }
+    }
+
+    impl_move_to_target_builder! {
+        with_task_id: task_id = TaskId,
+        with_start: start = PointId,
+        with_method: method = MoveMethod,
+        with_operation: jack_operation = JackOperation,
     }
 }
 
@@ -219,6 +240,14 @@ pub struct GetNavStatus {}
 pub struct MoveDesignedPath {
     #[serde(rename = "move_task_list")]
     pub path: Vec<MoveToTarget>,
+}
+
+impl MoveDesignedPath {
+    pub fn new(path: impl IntoIterator<Item = MoveToTarget>) -> Self {
+        Self {
+            path: path.into_iter().collect(),
+        }
+    }
 }
 
 #[cfg(test)]

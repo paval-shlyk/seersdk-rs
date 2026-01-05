@@ -100,7 +100,7 @@ macro_rules! impl_serde_for_num_enum {
 }
 
 impl_serde_for_num_enum!(StatusCode);
-impl_serde_for_num_enum!(JackOperation);
+impl_serde_for_num_enum!(JackOperationStatus);
 
 pub trait FromResponseBody: Sized {
     type Response: serde::de::DeserializeOwned;
@@ -241,7 +241,7 @@ pub struct BatteryStatus {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, num_enum::FromPrimitive)]
 #[repr(u32)]
-pub enum JackOperation {
+pub enum JackOperationStatus {
     Rising = 0x0,
     RisingInPlace = 0x1,
     Lowering = 0x2,
@@ -283,7 +283,7 @@ pub struct JackStatus {
 
     /// Current jack operation
     #[serde(rename = "jack_state")]
-    pub operation: JackOperation,
+    pub operation: JackOperationStatus,
 
     #[serde(rename = "jack_isFull")]
     pub has_payload: bool,

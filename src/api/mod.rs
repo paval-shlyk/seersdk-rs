@@ -179,6 +179,7 @@ impl_api_request!(CancelTaskRequest, ApiRequest::Nav(NavApi::Cancel), res: Statu
 impl_api_request!(MoveToTargetRequest, ApiRequest::Nav(NavApi::MoveToTarget), req: MoveToTarget, res: StatusMessage);
 impl_api_request!(TranslateRequest, ApiRequest::Nav(NavApi::Translate), res: StatusMessage);
 impl_api_request!(TurnRequest, ApiRequest::Nav(NavApi::Turn), res: StatusMessage);
+impl_api_request!(MoveDesignedPathRequest, ApiRequest::Nav(NavApi::MoveToTargetList), req: MoveDesignedPath, res: StatusMessage);
 
 // Peripheral API requests
 impl_api_request!(LoadJackRequest, ApiRequest::Peripheral(PeripheralApi::JackLoad), res: StatusMessage);
