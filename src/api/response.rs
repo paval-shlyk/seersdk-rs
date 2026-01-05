@@ -495,11 +495,12 @@ mod tests {
         assert_eq!(status.reason, Some(super::BlockReason::Fallingdown));
         assert_eq!(status.x, Some(1.5));
         assert_eq!(status.y, Some(2.5));
-        assert_eq!(status.code, Some(StatusCode::ParamTypeError));
+        assert_eq!(status.code, StatusCode::ParamTypeError);
         assert_eq!(status.message, "Parameter type error");
 
         let without_error_code = r#"
         {
+            "ret_code": 0,
             "blocked": false
         }"#;
         let status_no_code: super::BlockStatus =
@@ -508,7 +509,7 @@ mod tests {
         assert_eq!(status_no_code.reason, None);
         assert_eq!(status_no_code.x, None);
         assert_eq!(status_no_code.y, None);
-        assert_eq!(status_no_code.code, None);
+        assert_eq!(status_no_code.code, StatusCode::Success);
         assert_eq!(status_no_code.message, "");
     }
 }
