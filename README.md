@@ -196,6 +196,35 @@ The mock server features:
 - Concurrent client connections
 - **HTTP REST API for waypoint management** (see [WAYPOINT_MANAGEMENT.md](WAYPOINT_MANAGEMENT.md))
 
+#### Default Waypoints
+
+The mock server initializes with three default waypoints:
+
+| ID | X | Y | Description |
+|----|---|---|-------------|
+| `home` | 0.0 | 0.0 | Home position (origin) |
+| `station_a` | 10.0 | 5.0 | Station A location |
+| `station_b` | -5.0 | 10.0 | Station B location |
+
+You can list, add, and delete waypoints using the TUI client commands (`wp list`, `wp add`, `wp delete`) or via the HTTP REST API.
+
+#### Docker Deployment
+
+Run the mock server in Docker for easy deployment:
+
+```bash
+# Build the Docker image
+./docker/build.sh
+
+# Run the container
+./docker/run.sh
+
+# Or use Docker Compose
+docker-compose -f docker/docker-compose.yml up -d
+```
+
+See [docker/README.md](docker/README.md) for detailed Docker documentation.
+
 ### TUI Client
 
 An interactive Terminal User Interface for sending and receiving RBK messages. Uses the seersdk-rs crate to communicate with robots.
