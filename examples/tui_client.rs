@@ -13,15 +13,32 @@
 //!
 //! # Controls
 //!
-//! - Arrow keys: Navigate between input field and command list
-//! - Enter: Send command or execute selected preset
-//! - Esc/q: Quit application
-//! - Tab: Cycle through input fields
+//! ## Normal Mode (press Esc to enter)
+//! - i: Enter editing mode
+//! - q: Quit application
+//! - ?: Show help with all commands
+//! - c: Clear screen
+//! - j/↓: Scroll down one line
+//! - k/↑: Scroll up one line
+//! - d/PgDn: Scroll down one page
+//! - u/PgUp: Scroll up one page
+//! - g/Home: Jump to top
+//! - G/End: Jump to bottom
+//!
+//! ## Editing Mode (default)
+//! - Enter: Send command
+//! - Esc: Enter normal mode
+//! - Ctrl+j/Ctrl+↓: Scroll down
+//! - Ctrl+k/Ctrl+↑: Scroll up
+//! - Ctrl+c: Clear screen
+//! - PgUp/PgDn/Home/End: Scroll navigation
+//! - Left/Right: Move cursor
+//! - Backspace: Delete character
 
 use crossterm::{
     event::{
         self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode,
-        KeyEventKind,
+        KeyEventKind, KeyModifiers,
     },
     execute,
     terminal::{
@@ -35,7 +52,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
 use seersdk_rs::*;
 use std::io;
@@ -50,6 +67,8 @@ struct App {
     messages: Vec<String>,
     input_mode: InputMode,
     should_quit: bool,
+    scroll_state: ListState,
+    scroll_offset: usize,
 }
 
 #[derive(PartialEq)]
@@ -65,19 +84,15 @@ impl App {
             "=== RBK Robot TUI Client ===".to_string(),
             format!("Connected to: {}", robot_ip),
             "".to_string(),
-            "Available Commands:".to_string(),
-            "  1. battery - Query battery status".to_string(),
-            "  2. position - Query robot position".to_string(),
-            "  3. info - Query robot information".to_string(),
-            "  4. nav <target> - Navigate to target".to_string(),
-            "  5. stop - Stop navigation".to_string(),
-            "  6. pause - Pause navigation".to_string(),
-            "  7. resume - Resume navigation".to_string(),
-            "  8. jack load - Load jack".to_string(),
-            "  9. jack unload - Unload jack".to_string(),
-            "".to_string(),
-            "Type a command and press Enter...".to_string(),
+            "Press '?' in Normal mode for help...".to_string(),
         ];
+        let mut scroll_state = ListState::default();
+        let scroll_offset = if messages.len() > 0 {
+            messages.len() - 1
+        } else {
+            0
+        };
+        scroll_state.select(Some(scroll_offset));
         Self {
             robot_ip,
             client,
@@ -86,7 +101,67 @@ impl App {
             messages,
             input_mode: InputMode::Editing,
             should_quit: false,
+            scroll_state,
+            scroll_offset,
         }
+    }
+
+    fn show_help(&mut self) {
+        self.messages.clear();
+        self.add_message("=== RBK Robot Commands ===".to_string());
+        self.add_message("".to_string());
+        self.add_message("Robot Control:".to_string());
+        self.add_message("  battery (bat, 1)      - Query battery status".to_string());
+        self.add_message("  position (pos, loc, 2) - Query robot position".to_string());
+        self.add_message("  info (3)              - Query robot information".to_string());
+        self.add_message("  speed                 - Query robot speed".to_string());
+        self.add_message("  block                 - Query block status".to_string());
+        self.add_message("  navstatus             - Query navigation status".to_string());
+        self.add_message("".to_string());
+        self.add_message("Navigation:".to_string());
+        self.add_message("  nav <target> (4)      - Navigate to target".to_string());
+        self.add_message("  stop (5)              - Stop navigation".to_string());
+        self.add_message("  pause (6)             - Pause navigation".to_string());
+        self.add_message("  resume (7)            - Resume navigation".to_string());
+        self.add_message("".to_string());
+        self.add_message("Jack Control:".to_string());
+        self.add_message("  jack load (8)         - Load jack".to_string());
+        self.add_message("  jack unload (9)       - Unload jack".to_string());
+        self.add_message("".to_string());
+        self.add_message("Utility:".to_string());
+        self.add_message("  help                  - Show this help".to_string());
+        self.add_message("  clear                 - Clear screen".to_string());
+        self.add_message("".to_string());
+        self.add_message("=== Keyboard Shortcuts ===".to_string());
+        self.add_message("".to_string());
+        self.add_message("Normal Mode (press Esc):".to_string());
+        self.add_message("  i                     - Enter editing mode".to_string());
+        self.add_message("  q                     - Quit application".to_string());
+        self.add_message("  ?                     - Show this help".to_string());
+        self.add_message("  c                     - Clear screen".to_string());
+        self.add_message("  j / ↓                 - Scroll down".to_string());
+        self.add_message("  k / ↑                 - Scroll up".to_string());
+        self.add_message("  d / PgDn              - Page down".to_string());
+        self.add_message("  u / PgUp              - Page up".to_string());
+        self.add_message("  g / Home              - Go to top".to_string());
+        self.add_message("  G / End               - Go to bottom".to_string());
+        self.add_message("".to_string());
+        self.add_message("Editing Mode (default):".to_string());
+        self.add_message("  Enter                 - Send command".to_string());
+        self.add_message("  Esc                   - Normal mode".to_string());
+        self.add_message("  Ctrl+↑ / Ctrl+k       - Scroll up".to_string());
+        self.add_message("  Ctrl+↓ / Ctrl+j       - Scroll down".to_string());
+        self.add_message("  Ctrl+c                - Clear screen".to_string());
+        self.add_message("  PgUp/PgDn/Home/End    - Scroll navigation".to_string());
+        self.add_message("".to_string());
+    }
+
+    fn clear_screen(&mut self) {
+        self.messages.clear();
+        self.add_message("=== RBK Robot TUI Client ===".to_string());
+        self.add_message(format!("Connected to: {}", self.robot_ip));
+        self.add_message("".to_string());
+        self.add_message("Screen cleared. Press '?' for help.".to_string());
     }
 
     fn add_message(&mut self, msg: String) {
@@ -94,6 +169,45 @@ impl App {
         // Keep only last 100 messages
         if self.messages.len() > 100 {
             self.messages.drain(0..50);
+        }
+        // Auto-scroll to bottom when new message is added
+        self.scroll_to_bottom();
+    }
+
+    fn scroll_up(&mut self) {
+        if self.scroll_offset > 0 {
+            self.scroll_offset -= 1;
+            self.scroll_state.select(Some(self.scroll_offset));
+        }
+    }
+
+    fn scroll_down(&mut self) {
+        if self.scroll_offset < self.messages.len().saturating_sub(1) {
+            self.scroll_offset += 1;
+            self.scroll_state.select(Some(self.scroll_offset));
+        }
+    }
+
+    fn scroll_page_up(&mut self, page_size: usize) {
+        self.scroll_offset = self.scroll_offset.saturating_sub(page_size);
+        self.scroll_state.select(Some(self.scroll_offset));
+    }
+
+    fn scroll_page_down(&mut self, page_size: usize) {
+        self.scroll_offset = (self.scroll_offset + page_size)
+            .min(self.messages.len().saturating_sub(1));
+        self.scroll_state.select(Some(self.scroll_offset));
+    }
+
+    fn scroll_to_top(&mut self) {
+        self.scroll_offset = 0;
+        self.scroll_state.select(Some(0));
+    }
+
+    fn scroll_to_bottom(&mut self) {
+        if !self.messages.is_empty() {
+            self.scroll_offset = self.messages.len() - 1;
+            self.scroll_state.select(Some(self.scroll_offset));
         }
     }
 
@@ -133,19 +247,12 @@ impl App {
             "speed" => self.query_speed().await,
             "block" => self.query_block_status().await,
             "navstatus" => self.query_nav_status().await,
-            "help" => {
-                self.add_message("Available commands:".to_string());
-                self.add_message(
-                    "  battery, position, info, nav <target>".to_string(),
-                );
-                self.add_message(
-                    "  stop, pause, resume, jack <load|unload>".to_string(),
-                );
+            "help" | "?" => {
+                self.show_help();
                 Ok(())
             }
-            "clear" => {
-                self.messages.clear();
-                self.add_message("=== RBK Robot TUI Client ===".to_string());
+            "clear" | "cls" => {
+                self.clear_screen();
                 Ok(())
             }
             _ => Err(format!(
@@ -342,7 +449,7 @@ impl App {
     }
 }
 
-fn ui(f: &mut Frame, app: &App) {
+fn ui(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -371,16 +478,26 @@ fn ui(f: &mut Frame, app: &App) {
     let messages: Vec<ListItem> = app
         .messages
         .iter()
-        .map(|m| {
+        .enumerate()
+        .map(|(i, m)| {
             let content = Line::from(Span::raw(m));
-            ListItem::new(content)
+            let style = if Some(i) == app.scroll_state.selected() {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::White)
+            };
+            ListItem::new(content).style(style)
         })
         .collect();
 
     let messages_widget = List::new(messages)
-        .block(Block::default().borders(Borders::ALL).title("Messages"))
-        .style(Style::default().fg(Color::White));
-    f.render_widget(messages_widget, chunks[1]);
+        .block(Block::default().borders(Borders::ALL).title(format!(
+            "Messages [{}/{}] - Use ↑↓ PgUp/PgDn Home/End to scroll",
+            app.scroll_offset + 1,
+            app.messages.len()
+        )))
+        .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
+    f.render_stateful_widget(messages_widget, chunks[1], &mut app.scroll_state);
 
     // Input area
     let input_widget = Paragraph::new(app.input.as_str())
@@ -405,9 +522,9 @@ fn ui(f: &mut Frame, app: &App) {
 
     // Help text
     let help_text = match app.input_mode {
-        InputMode::Normal => "Press 'i' to start editing, 'q' to quit",
+        InputMode::Normal => "Normal: i=edit q=quit ?=help c=clear j/k=scroll d/u=page g/G=top/bottom",
         InputMode::Editing => {
-            "Press 'Esc' to stop editing, 'Enter' to send command"
+            "Edit: Esc=normal Enter=send Ctrl+c=clear Ctrl+j/k=scroll PgUp/PgDn/Home/End=nav"
         }
     };
     let help = Paragraph::new(help_text)
@@ -422,7 +539,7 @@ async fn run_app<B: ratatui::backend::Backend>(
     mut app: App,
 ) -> io::Result<()> {
     loop {
-        terminal.draw(|f| ui(f, &app))?;
+        terminal.draw(|f| ui(f, &mut app))?;
 
         if app.should_quit {
             break;
@@ -443,39 +560,92 @@ async fn run_app<B: ratatui::backend::Backend>(
                         KeyCode::Char('i') => {
                             app.input_mode = InputMode::Editing;
                         }
-                        _ => {}
-                    },
-                    InputMode::Editing => match key.code {
-                        KeyCode::Enter => {
-                            let cmd = app.input.drain(..).collect::<String>();
-                            app.cursor_position = 0;
-                            app.execute_command(&cmd).await;
+                        KeyCode::Char('?') => {
+                            app.show_help();
                         }
-                        KeyCode::Char(c) => {
-                            app.input.insert(app.cursor_position, c);
-                            app.cursor_position += 1;
+                        KeyCode::Char('c') => {
+                            app.clear_screen();
                         }
-                        KeyCode::Backspace => {
-                            if app.cursor_position > 0 {
-                                app.input.remove(app.cursor_position - 1);
-                                app.cursor_position -= 1;
-                            }
+                        KeyCode::Char('k') | KeyCode::Up => {
+                            app.scroll_up();
                         }
-                        KeyCode::Left => {
-                            if app.cursor_position > 0 {
-                                app.cursor_position -= 1;
-                            }
+                        KeyCode::Char('j') | KeyCode::Down => {
+                            app.scroll_down();
                         }
-                        KeyCode::Right => {
-                            if app.cursor_position < app.input.len() {
-                                app.cursor_position += 1;
-                            }
+                        KeyCode::Char('u') | KeyCode::PageUp => {
+                            app.scroll_page_up(10);
                         }
-                        KeyCode::Esc => {
-                            app.input_mode = InputMode::Normal;
+                        KeyCode::Char('d') | KeyCode::PageDown => {
+                            app.scroll_page_down(10);
+                        }
+                        KeyCode::Char('g') | KeyCode::Home => {
+                            app.scroll_to_top();
+                        }
+                        KeyCode::Char('G') | KeyCode::End => {
+                            app.scroll_to_bottom();
                         }
                         _ => {}
                     },
+                    InputMode::Editing => {
+                        if key.modifiers.contains(KeyModifiers::CONTROL) {
+                            match key.code {
+                                KeyCode::Char('k') | KeyCode::Up => {
+                                    app.scroll_up();
+                                }
+                                KeyCode::Char('j') | KeyCode::Down => {
+                                    app.scroll_down();
+                                }
+                                KeyCode::Char('c') => {
+                                    app.clear_screen();
+                                }
+                                _ => {}
+                            }
+                        } else {
+                            match key.code {
+                                KeyCode::Enter => {
+                                    let cmd = app.input.drain(..).collect::<String>();
+                                    app.cursor_position = 0;
+                                    app.execute_command(&cmd).await;
+                                }
+                                KeyCode::Char(c) => {
+                                    app.input.insert(app.cursor_position, c);
+                                    app.cursor_position += 1;
+                                }
+                                KeyCode::Backspace => {
+                                    if app.cursor_position > 0 {
+                                        app.input.remove(app.cursor_position - 1);
+                                        app.cursor_position -= 1;
+                                    }
+                                }
+                                KeyCode::Left => {
+                                    if app.cursor_position > 0 {
+                                        app.cursor_position -= 1;
+                                    }
+                                }
+                                KeyCode::Right => {
+                                    if app.cursor_position < app.input.len() {
+                                        app.cursor_position += 1;
+                                    }
+                                }
+                                KeyCode::PageUp => {
+                                    app.scroll_page_up(10);
+                                }
+                                KeyCode::PageDown => {
+                                    app.scroll_page_down(10);
+                                }
+                                KeyCode::Home => {
+                                    app.scroll_to_top();
+                                }
+                                KeyCode::End => {
+                                    app.scroll_to_bottom();
+                                }
+                                KeyCode::Esc => {
+                                    app.input_mode = InputMode::Normal;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
                 }
             }
         }
