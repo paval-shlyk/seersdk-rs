@@ -67,6 +67,12 @@ impl GetNavStatus {
     }
 }
 
+impl Default for GetNavStatus {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(
     Debug, Clone, serde::Serialize, serde::Deserialize, Default, PartialEq,
 )]

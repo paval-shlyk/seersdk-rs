@@ -1,0 +1,36 @@
+# Target directory (build artifacts)
+target/
+
+# Git directory
+.git/
+.gitignore
+.github/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation
+*.md
+!README.md
+WAYPOINT_MANAGEMENT.md
+
+# Test files
+test_waypoints.sh
+tests/
+
+# Python files
+*.py
+__pycache__/
+
+# Docker files (already in context)
+docker/
+Dockerfile
+.dockerignore
+
+# Other
+*.log
+.DS_Store
