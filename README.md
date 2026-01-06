@@ -212,6 +212,21 @@ You can list, add, and delete waypoints using the TUI client commands (`wp list`
 
 Run the mock server in Docker for easy deployment:
 
+**Using Pre-built Image (from GitHub Container Registry):**
+
+```bash
+# Pull and run the latest image
+docker run -d \
+  --name mocked-robot-server \
+  -p 19204-19210:19204-19210 \
+  -p 8080:8080 \
+  ghcr.io/paval-shlyk/seersdk-rs/mocked-robot:latest
+
+# Or with docker-compose (see docker/docker-compose.yml)
+```
+
+**Building Locally:**
+
 ```bash
 # Build the Docker image
 ./docker/build.sh
@@ -223,7 +238,9 @@ Run the mock server in Docker for easy deployment:
 docker-compose -f docker/docker-compose.yml up -d
 ```
 
-See [docker/README.md](docker/README.md) for detailed Docker documentation.
+The Docker image is automatically built and published to GitHub Container Registry on every push to master. Available for both `linux/amd64` and `linux/arm64` platforms.
+
+See [docker/README.md](docker/README.md) for detailed Docker documentation and [.github/DOCKER_CI.md](.github/DOCKER_CI.md) for CI/CD information.
 
 ### TUI Client
 

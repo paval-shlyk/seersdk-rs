@@ -1,17 +1,11 @@
 version: '3.8'
 
+# Docker Compose configuration using pre-built image from GitHub Container Registry
+# This is faster as it doesn't require building the image locally
+
 services:
   mocked-robot:
-    # Option 1: Build locally (default)
-    build:
-      context: ..
-      dockerfile: docker/mocked-robot.Dockerfile
-    
-    # Option 2: Use pre-built image from GitHub Container Registry
-    # Comment out 'build' above and uncomment the line below:
-    # image: ghcr.io/paval-shlyk/seersdk-rs/mocked-robot:latest
-    
-    image: mocked-rbk-robot:latest
+    image: ghcr.io/paval-shlyk/seersdk-rs/mocked-robot:latest
     container_name: mocked-robot-server
     ports:
       # RBK Protocol ports

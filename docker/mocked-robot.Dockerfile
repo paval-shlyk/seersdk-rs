@@ -4,13 +4,13 @@
 # ============================================================================
 # Build Stage: Compile the Rust application
 # ============================================================================
-FROM rust:1.83-slim-bookworm AS builder
+FROM rust:1.91-slim-bookworm AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* 
 
 # Create a new empty project
 WORKDIR /build
@@ -24,10 +24,10 @@ COPY examples ./examples
 
 # Build the mock_robot_server example in release mode
 # This will create an optimized binary with minimal size
-RUN cargo build --release --example mock_robot_server
+RUN cargo build --release --example mock_robot_server 
 
 # Strip the binary to reduce size further
-RUN strip /build/target/release/examples/mock_robot_server
+RUN strip /build/target/release/examples/mock_robot_server 
 
 # ============================================================================
 # Runtime Stage: Minimal image with only runtime dependencies
@@ -38,12 +38,12 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* 
 
 # Create a non-root user to run the application
 RUN useradd -m -u 1000 robot && \
     mkdir -p /app && \
-    chown -R robot:robot /app
+    chown -R robot:robot /app 
 
 # Set working directory
 WORKDIR /app
@@ -52,7 +52,7 @@ WORKDIR /app
 COPY --from=builder /build/target/release/examples/mock_robot_server /app/mock_robot_server
 
 # Change ownership
-RUN chown robot:robot /app/mock_robot_server
+RUN chown robot:robot /app/mock_robot_server 
 
 # Switch to non-root user
 USER robot

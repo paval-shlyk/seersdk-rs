@@ -4,7 +4,36 @@ This directory contains Docker configuration files for building and running the 
 
 ## Quick Start
 
-### Option 1: Using Helper Scripts
+### Option 1: Using Pre-built Image (Recommended)
+
+The Docker image is automatically built and published to GitHub Container Registry. Just pull and run:
+
+```bash
+# Pull the latest image
+docker pull ghcr.io/paval-shlyk/seersdk-rs/mocked-robot:latest
+
+# Run the container
+docker run -d \
+  --name mocked-robot-server \
+  -p 19204-19210:19204-19210 \
+  -p 8080:8080 \
+  ghcr.io/paval-shlyk/seersdk-rs/mocked-robot:latest
+
+# View logs
+docker logs -f mocked-robot-server
+```
+
+**Available Tags:**
+- `latest` - Latest build from master branch
+- `v1.0.0` - Specific version (when tagged)
+- `1.0` - Major.minor version
+- `1` - Major version
+
+**Available Platforms:**
+- `linux/amd64` (x86_64)
+- `linux/arm64` (ARM64/Apple Silicon)
+
+### Option 2: Using Helper Scripts (Build Locally)
 
 ```bash
 # Build the Docker image
@@ -14,7 +43,7 @@ This directory contains Docker configuration files for building and running the 
 ./docker/run.sh
 ```
 
-### Option 2: Using Docker Compose
+### Option 3: Using Docker Compose
 
 ```bash
 # Build and start the container
@@ -27,7 +56,7 @@ docker-compose -f docker/docker-compose.yml logs -f
 docker-compose -f docker/docker-compose.yml down
 ```
 
-### Option 3: Manual Docker Commands
+### Option 4: Manual Docker Commands (Build Locally)
 
 ```bash
 # Build the image
