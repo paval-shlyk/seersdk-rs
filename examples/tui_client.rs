@@ -55,8 +55,8 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
 use reqwest;
-use serde::{Deserialize, Serialize};
 use seersdk_rs::*;
+use serde::{Deserialize, Serialize};
 use std::io;
 use std::time::Duration;
 
@@ -127,38 +127,70 @@ impl App {
         self.add_message("=== RBK Robot Commands ===".to_string());
         self.add_message("".to_string());
         self.add_message("Robot Control:".to_string());
-        self.add_message("  battery (bat, 1)      - Query battery status".to_string());
-        self.add_message("  position (pos, loc, 2) - Query robot position".to_string());
-        self.add_message("  info (3)              - Query robot information".to_string());
-        self.add_message("  speed                 - Query robot speed".to_string());
-        self.add_message("  block                 - Query block status".to_string());
-        self.add_message("  navstatus             - Query navigation status".to_string());
+        self.add_message(
+            "  battery (bat, 1)      - Query battery status".to_string(),
+        );
+        self.add_message(
+            "  position (pos, loc, 2) - Query robot position".to_string(),
+        );
+        self.add_message(
+            "  info (3)              - Query robot information".to_string(),
+        );
+        self.add_message(
+            "  speed                 - Query robot speed".to_string(),
+        );
+        self.add_message(
+            "  block                 - Query block status".to_string(),
+        );
+        self.add_message(
+            "  navstatus             - Query navigation status".to_string(),
+        );
         self.add_message("".to_string());
         self.add_message("Navigation:".to_string());
-        self.add_message("  nav <target> (4)      - Navigate to target".to_string());
-        self.add_message("  stop (5)              - Stop navigation".to_string());
-        self.add_message("  pause (6)             - Pause navigation".to_string());
-        self.add_message("  resume (7)            - Resume navigation".to_string());
+        self.add_message(
+            "  nav <target> (4)      - Navigate to target".to_string(),
+        );
+        self.add_message(
+            "  stop (5)              - Stop navigation".to_string(),
+        );
+        self.add_message(
+            "  pause (6)             - Pause navigation".to_string(),
+        );
+        self.add_message(
+            "  resume (7)            - Resume navigation".to_string(),
+        );
         self.add_message("".to_string());
         self.add_message("Jack Control:".to_string());
         self.add_message("  jack load (8)         - Load jack".to_string());
         self.add_message("  jack unload (9)       - Unload jack".to_string());
         self.add_message("".to_string());
         self.add_message("Waypoint Management:".to_string());
-        self.add_message("  wp list               - List all waypoints".to_string());
+        self.add_message(
+            "  wp list               - List all waypoints".to_string(),
+        );
         self.add_message("  wp add <id> <x> <y>   - Add waypoint".to_string());
-        self.add_message("  wp delete <id>        - Delete waypoint".to_string());
+        self.add_message(
+            "  wp delete <id>        - Delete waypoint".to_string(),
+        );
         self.add_message("".to_string());
         self.add_message("Utility:".to_string());
-        self.add_message("  help                  - Show this help".to_string());
+        self.add_message(
+            "  help                  - Show this help".to_string(),
+        );
         self.add_message("  clear                 - Clear screen".to_string());
         self.add_message("".to_string());
         self.add_message("=== Keyboard Shortcuts ===".to_string());
         self.add_message("".to_string());
         self.add_message("Normal Mode (press Esc):".to_string());
-        self.add_message("  i                     - Enter editing mode".to_string());
-        self.add_message("  q                     - Quit application".to_string());
-        self.add_message("  ?                     - Show this help".to_string());
+        self.add_message(
+            "  i                     - Enter editing mode".to_string(),
+        );
+        self.add_message(
+            "  q                     - Quit application".to_string(),
+        );
+        self.add_message(
+            "  ?                     - Show this help".to_string(),
+        );
         self.add_message("  c                     - Clear screen".to_string());
         self.add_message("  j / ↓                 - Scroll down".to_string());
         self.add_message("  k / ↑                 - Scroll up".to_string());
@@ -173,7 +205,9 @@ impl App {
         self.add_message("  Ctrl+↑ / Ctrl+k       - Scroll up".to_string());
         self.add_message("  Ctrl+↓ / Ctrl+j       - Scroll down".to_string());
         self.add_message("  Ctrl+c                - Clear screen".to_string());
-        self.add_message("  PgUp/PgDn/Home/End    - Scroll navigation".to_string());
+        self.add_message(
+            "  PgUp/PgDn/Home/End    - Scroll navigation".to_string(),
+        );
         self.add_message("".to_string());
     }
 
@@ -292,7 +326,10 @@ impl App {
                                 Err("Usage: wp delete <id>".to_string())
                             }
                         }
-                        _ => Err(format!("Unknown waypoint command: {}. Try: list, add, delete", parts[1])),
+                        _ => Err(format!(
+                            "Unknown waypoint command: {}. Try: list, add, delete",
+                            parts[1]
+                        )),
                     }
                 } else {
                     Err("Usage: wp <list|add|delete>".to_string())
@@ -508,7 +545,9 @@ impl App {
                         Ok(waypoints) => {
                             self.add_message("Waypoints:".to_string());
                             if waypoints.is_empty() {
-                                self.add_message("  No waypoints defined".to_string());
+                                self.add_message(
+                                    "  No waypoints defined".to_string(),
+                                );
                             } else {
                                 for wp in waypoints {
                                     self.add_message(format!(
@@ -519,7 +558,9 @@ impl App {
                             }
                             Ok(())
                         }
-                        Err(e) => Err(format!("Failed to parse waypoints: {}", e)),
+                        Err(e) => {
+                            Err(format!("Failed to parse waypoints: {}", e))
+                        }
                     }
                 } else {
                     Err(format!("HTTP error: {}", response.status()))
@@ -529,13 +570,31 @@ impl App {
         }
     }
 
-    async fn add_waypoint(&mut self, id: String, x: f64, y: f64) -> Result<(), String> {
-        let waypoint = Waypoint { id: id.clone(), x, y };
+    async fn add_waypoint(
+        &mut self,
+        id: String,
+        x: f64,
+        y: f64,
+    ) -> Result<(), String> {
+        let waypoint = Waypoint {
+            id: id.clone(),
+            x,
+            y,
+        };
         let url = format!("{}/waypoints", self.http_url);
-        match self.http_client.post(&url).json(&vec![waypoint]).send().await {
+        match self
+            .http_client
+            .post(&url)
+            .json(&vec![waypoint])
+            .send()
+            .await
+        {
             Ok(response) => {
                 if response.status().is_success() {
-                    self.add_message(format!("✓ Waypoint '{}' added at ({:.2}, {:.2})", id, x, y));
+                    self.add_message(format!(
+                        "✓ Waypoint '{}' added at ({:.2}, {:.2})",
+                        id, x, y
+                    ));
                     Ok(())
                 } else {
                     Err(format!("HTTP error: {}", response.status()))
@@ -596,7 +655,9 @@ fn ui(f: &mut Frame, app: &mut App) {
         .map(|(i, m)| {
             let content = Line::from(Span::raw(m));
             let style = if Some(i) == app.scroll_state.selected() {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::White)
             };
@@ -610,7 +671,11 @@ fn ui(f: &mut Frame, app: &mut App) {
             app.scroll_offset + 1,
             app.messages.len()
         )))
-        .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
+        .highlight_style(
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        );
     f.render_stateful_widget(messages_widget, chunks[1], &mut app.scroll_state);
 
     // Input area
@@ -636,7 +701,9 @@ fn ui(f: &mut Frame, app: &mut App) {
 
     // Help text
     let help_text = match app.input_mode {
-        InputMode::Normal => "Normal: i=edit q=quit ?=help c=clear j/k=scroll d/u=page g/G=top/bottom",
+        InputMode::Normal => {
+            "Normal: i=edit q=quit ?=help c=clear j/k=scroll d/u=page g/G=top/bottom"
+        }
         InputMode::Editing => {
             "Edit: Esc=normal Enter=send Ctrl+c=clear Ctrl+j/k=scroll PgUp/PgDn/Home/End=nav"
         }
@@ -717,7 +784,8 @@ async fn run_app<B: ratatui::backend::Backend>(
                         } else {
                             match key.code {
                                 KeyCode::Enter => {
-                                    let cmd = app.input.drain(..).collect::<String>();
+                                    let cmd =
+                                        app.input.drain(..).collect::<String>();
                                     app.cursor_position = 0;
                                     app.execute_command(&cmd).await;
                                 }
@@ -727,7 +795,8 @@ async fn run_app<B: ratatui::backend::Backend>(
                                 }
                                 KeyCode::Backspace => {
                                     if app.cursor_position > 0 {
-                                        app.input.remove(app.cursor_position - 1);
+                                        app.input
+                                            .remove(app.cursor_position - 1);
                                         app.cursor_position -= 1;
                                     }
                                 }
