@@ -2,18 +2,32 @@
 //!
 //! These tests verify the correctness of the protocol communication
 //! and various API request/response types against a mock server.
+//!
+//! The mock server will be automatically started if not already running.
 
 use seersdk_rs::*;
 use std::time::Duration;
+use tokio::sync::OnceCell;
+
+mod test_fixtures;
+use test_fixtures::MockServerFixture;
+
+static FIXTURE: OnceCell<MockServerFixture> = OnceCell::const_new();
+
+/// Initialize the mock server once for all tests
+async fn ensure_mock_server() {
+    FIXTURE.get_or_init(|| async { MockServerFixture::new().await });
+}
 
 /// Helper function to create a test client
-fn create_test_client() -> RbkClient {
+async fn create_test_client() -> RbkClient {
+    ensure_mock_server().await;
     RbkClient::new("localhost")
 }
 
 #[tokio::test]
 async fn test_robot_info_query() {
-    let client = create_test_client();
+    let client = create_test_client().await;
     let request = CommonInfoRequest::new();
 
     let response = client.request(request, Duration::from_secs(5)).await;
@@ -34,7 +48,7 @@ async fn test_robot_info_query() {
 
 #[tokio::test]
 async fn test_battery_status_query() {
-    let client = create_test_client();
+    let client = create_test_client().await;
     let request = BatteryStatusRequest::new();
 
     let response = client.request(request, Duration::from_secs(5)).await;
@@ -54,7 +68,7 @@ async fn test_battery_status_query() {
 
 #[tokio::test]
 async fn test_robot_pose_query() {
-    let client = create_test_client();
+    let client = create_test_client().await;
     let request = RobotPoseRequest::new();
 
     let response = client.request(request, Duration::from_secs(5)).await;
@@ -73,7 +87,7 @@ async fn test_robot_pose_query() {
 
 #[tokio::test]
 async fn test_block_status_query() {
-    let client = create_test_client();
+    let client = create_test_client().await;
     let request = BlockStatusRequest::new();
 
     let response = client.request(request, Duration::from_secs(5)).await;
@@ -89,7 +103,7 @@ async fn test_block_status_query() {
 
 #[tokio::test]
 async fn test_navigation_commands() {
-    let client = create_test_client();
+    let client = create_test_client().await;
 
     // Test navigation to target
     let move_cmd = MoveToTarget::new("test_target");
@@ -135,7 +149,7 @@ async fn test_navigation_commands() {
 
 #[tokio::test]
 async fn test_jack_operations() {
-    let client = create_test_client();
+    let client = create_test_client().await;
 
     // Test jack load
     let load_request = LoadJackRequest::new();
@@ -180,7 +194,7 @@ async fn test_jack_operations() {
 
 #[tokio::test]
 async fn test_control_commands() {
-    let client = create_test_client();
+    let client = create_test_client().await;
 
     // Test stop exercise
     let stop_request = StopExerciseRequest::new();
@@ -217,7 +231,7 @@ async fn test_control_commands() {
 
 #[tokio::test]
 async fn test_nav_status_query() {
-    let client = create_test_client();
+    let client = create_test_client().await;
     let request = NavStatusRequest::new(GetNavStatus::new());
 
     let response = client.request(request, Duration::from_secs(5)).await;
@@ -245,7 +259,7 @@ async fn test_nav_status_query() {
 
 #[tokio::test]
 async fn test_operation_info_query() {
-    let client = create_test_client();
+    let client = create_test_client().await;
     let request = OperationInfoRequest::new();
 
     let response = client.request(request, Duration::from_secs(5)).await;
@@ -265,7 +279,7 @@ async fn test_operation_info_query() {
 
 #[tokio::test]
 async fn test_jack_status_query() {
-    let client = create_test_client();
+    let client = create_test_client().await;
     let request = JackStatusRequest::new();
 
     let response = client.request(request, Duration::from_secs(5)).await;
@@ -282,7 +296,7 @@ async fn test_jack_status_query() {
 
 #[tokio::test]
 async fn test_multiple_concurrent_requests() {
-    let client = create_test_client();
+    let client = create_test_client().await;
 
     // Send multiple requests sequentially to avoid connection issues
     let battery_result = client
@@ -318,7 +332,7 @@ async fn test_multiple_concurrent_requests() {
 
 #[tokio::test]
 async fn test_move_to_target_with_options() {
-    let client = create_test_client();
+    let client = create_test_client().await;
 
     // Create a move command with additional options
     let move_cmd = MoveToTarget::new("target_with_options")
@@ -337,7 +351,7 @@ async fn test_move_to_target_with_options() {
 
 #[tokio::test]
 async fn test_task_status_query() {
-    let client = create_test_client();
+    let client = create_test_client().await;
 
     // Create a task status request
     let get_task_status =
@@ -354,7 +368,7 @@ async fn test_task_status_query() {
 
 #[tokio::test]
 async fn test_designed_path_navigation() {
-    let client = create_test_client();
+    let client = create_test_client().await;
 
     // Create a path with multiple waypoints
     let path = vec![

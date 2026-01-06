@@ -324,16 +324,29 @@ This demo showcases:
 
 ## Testing
 
-Run the full test suite including integration tests:
+The project includes both unit tests and integration tests. Integration tests **automatically start the mock server** if it's not already running!
+
+### Quick Start
 
 ```bash
-# Run all tests (requires mock server to be running)
+# Run all tests (auto-starts mock server if needed)
 cargo test
+# Or manually manage the server
+# Terminal 1:
+cargo run --example mock_robot_server
+# Terminal 2:
+cargo test
+```
 
-# Run only unit tests
+### Test Types
+
+**Unit Tests:**
+```bash
 cargo test --lib
+```
 
-# Run only integration tests
+**Integration Tests:**
+```bash
 cargo test --test integration_tests
 ```
 
@@ -344,6 +357,15 @@ The integration tests verify:
 - Control commands
 - Peripheral operations
 - Concurrent request handling
+
+### Automatic Mock Server
+
+Integration tests now include a test fixture that:
+- ✅ Checks if mock server is already running
+- ✅ Automatically starts server if needed
+- ✅ Waits for server to be ready
+- ✅ Keeps server running for all tests
+- ✅ Stops server when tests complete
 
 ## Documentation
 
