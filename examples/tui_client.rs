@@ -54,14 +54,26 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
+use reqwest;
+use serde::{Deserialize, Serialize};
 use seersdk_rs::*;
 use std::io;
 use std::time::Duration;
 
+/// Waypoint structure for HTTP API
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Waypoint {
+    id: String,
+    x: f64,
+    y: f64,
+}
+
 /// Application state
 struct App {
     robot_ip: String,
+    http_url: String,
     client: RbkClient,
+    http_client: reqwest::Client,
     input: String,
     cursor_position: usize,
     messages: Vec<String>,
@@ -80,6 +92,8 @@ enum InputMode {
 impl App {
     fn new(robot_ip: String) -> Self {
         let client = RbkClient::new(robot_ip.clone());
+        let http_client = reqwest::Client::new();
+        let http_url = format!("http://{}:8080", robot_ip);
         let messages = vec![
             "=== RBK Robot TUI Client ===".to_string(),
             format!("Connected to: {}", robot_ip),
@@ -95,7 +109,9 @@ impl App {
         scroll_state.select(Some(scroll_offset));
         Self {
             robot_ip,
+            http_url,
             client,
+            http_client,
             input: String::new(),
             cursor_position: 0,
             messages,
@@ -127,6 +143,11 @@ impl App {
         self.add_message("Jack Control:".to_string());
         self.add_message("  jack load (8)         - Load jack".to_string());
         self.add_message("  jack unload (9)       - Unload jack".to_string());
+        self.add_message("".to_string());
+        self.add_message("Waypoint Management:".to_string());
+        self.add_message("  wp list               - List all waypoints".to_string());
+        self.add_message("  wp add <id> <x> <y>   - Add waypoint".to_string());
+        self.add_message("  wp delete <id>        - Delete waypoint".to_string());
         self.add_message("".to_string());
         self.add_message("Utility:".to_string());
         self.add_message("  help                  - Show this help".to_string());
@@ -247,6 +268,36 @@ impl App {
             "speed" => self.query_speed().await,
             "block" => self.query_block_status().await,
             "navstatus" => self.query_nav_status().await,
+            "wp" | "waypoint" => {
+                if parts.len() > 1 {
+                    match parts[1].to_lowercase().as_str() {
+                        "list" | "ls" => self.list_waypoints().await,
+                        "add" => {
+                            if parts.len() >= 5 {
+                                let id = parts[2].to_string();
+                                let x: Result<f64, _> = parts[3].parse();
+                                let y: Result<f64, _> = parts[4].parse();
+                                match (x, y) {
+                                    (Ok(x), Ok(y)) => self.add_waypoint(id, x, y).await,
+                                    _ => Err("Invalid coordinates. Usage: wp add <id> <x> <y>".to_string()),
+                                }
+                            } else {
+                                Err("Usage: wp add <id> <x> <y>".to_string())
+                            }
+                        }
+                        "delete" | "del" | "rm" => {
+                            if parts.len() >= 3 {
+                                self.delete_waypoint(parts[2]).await
+                            } else {
+                                Err("Usage: wp delete <id>".to_string())
+                            }
+                        }
+                        _ => Err(format!("Unknown waypoint command: {}. Try: list, add, delete", parts[1])),
+                    }
+                } else {
+                    Err("Usage: wp <list|add|delete>".to_string())
+                }
+            }
             "help" | "?" => {
                 self.show_help();
                 Ok(())
@@ -445,6 +496,69 @@ impl App {
                 Ok(())
             }
             Err(e) => Err(format!("Failed to query nav status: {}", e)),
+        }
+    }
+
+    async fn list_waypoints(&mut self) -> Result<(), String> {
+        let url = format!("{}/waypoints", self.http_url);
+        match self.http_client.get(&url).send().await {
+            Ok(response) => {
+                if response.status().is_success() {
+                    match response.json::<Vec<Waypoint>>().await {
+                        Ok(waypoints) => {
+                            self.add_message("Waypoints:".to_string());
+                            if waypoints.is_empty() {
+                                self.add_message("  No waypoints defined".to_string());
+                            } else {
+                                for wp in waypoints {
+                                    self.add_message(format!(
+                                        "  {} - ({:.2}, {:.2})",
+                                        wp.id, wp.x, wp.y
+                                    ));
+                                }
+                            }
+                            Ok(())
+                        }
+                        Err(e) => Err(format!("Failed to parse waypoints: {}", e)),
+                    }
+                } else {
+                    Err(format!("HTTP error: {}", response.status()))
+                }
+            }
+            Err(e) => Err(format!("Failed to connect: {}", e)),
+        }
+    }
+
+    async fn add_waypoint(&mut self, id: String, x: f64, y: f64) -> Result<(), String> {
+        let waypoint = Waypoint { id: id.clone(), x, y };
+        let url = format!("{}/waypoints", self.http_url);
+        match self.http_client.post(&url).json(&vec![waypoint]).send().await {
+            Ok(response) => {
+                if response.status().is_success() {
+                    self.add_message(format!("✓ Waypoint '{}' added at ({:.2}, {:.2})", id, x, y));
+                    Ok(())
+                } else {
+                    Err(format!("HTTP error: {}", response.status()))
+                }
+            }
+            Err(e) => Err(format!("Failed to add waypoint: {}", e)),
+        }
+    }
+
+    async fn delete_waypoint(&mut self, id: &str) -> Result<(), String> {
+        let url = format!("{}/waypoints/{}", self.http_url, id);
+        match self.http_client.delete(&url).send().await {
+            Ok(response) => {
+                if response.status() == 204 {
+                    self.add_message(format!("✓ Waypoint '{}' deleted", id));
+                    Ok(())
+                } else if response.status() == 404 {
+                    Err(format!("Waypoint '{}' not found", id))
+                } else {
+                    Err(format!("HTTP error: {}", response.status()))
+                }
+            }
+            Err(e) => Err(format!("Failed to delete waypoint: {}", e)),
         }
     }
 }

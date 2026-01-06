@@ -4,6 +4,11 @@
 //! with mock navigation logic. It implements all API endpoints across
 //! multiple ports as per the RBK protocol specification.
 //!
+//! Additionally, it provides HTTP REST API for waypoint management:
+//! - POST /waypoints: Add waypoints (JSON array with id, x, y)
+//! - GET /waypoints: Retrieve all waypoints
+//! - DELETE /waypoints/{ID}: Delete waypoint by ID
+//!
 //! # Usage
 //!
 //! ```bash
@@ -17,18 +22,43 @@
 //! - Port 19207: Config APIs
 //! - Port 19208: Kernel APIs
 //! - Port 19210: Peripheral APIs
+//! - Port 8080: HTTP REST API for waypoints
 
+use axum::{
+    Json, Router,
+    extract::{Path, State as AxumState},
+    http::StatusCode,
+    routing::{delete, get, post},
+};
 use bytes::{Buf, BufMut, BytesMut};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::RwLock;
+use tower_http::cors::{Any, CorsLayer};
 
 // Protocol constants
 const START_MARK: u8 = 0x5A;
 const PROTO_VERSION: u8 = 0x01;
+
+/// Waypoint definition
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Waypoint {
+    id: String,
+    x: f64,
+    y: f64,
+}
+
+/// Shared application state
+#[allow(dead_code)]
+struct AppState {
+    robot: Arc<RwLock<RobotState>>,
+    waypoints: Arc<RwLock<HashMap<String, Waypoint>>>,
+}
 
 /// Shared robot state
 #[derive(Clone)]
@@ -725,17 +755,119 @@ async fn simulate_robot_behavior(state: Arc<RwLock<RobotState>>) {
     }
 }
 
+// HTTP API Handlers
+
+/// POST /waypoints - Add waypoints
+async fn add_waypoints(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Json(waypoints): Json<Vec<Waypoint>>,
+) -> StatusCode {
+    let mut wp_store = state.waypoints.write().await;
+    for wp in waypoints {
+        wp_store.insert(wp.id.clone(), wp);
+    }
+    StatusCode::CREATED
+}
+
+/// GET /waypoints - Get all waypoints
+async fn get_waypoints(
+    AxumState(state): AxumState<Arc<AppState>>,
+) -> Json<Vec<Waypoint>> {
+    let wp_store = state.waypoints.read().await;
+    let waypoints: Vec<Waypoint> = wp_store.values().cloned().collect();
+    Json(waypoints)
+}
+
+/// DELETE /waypoints/:id - Delete waypoint by ID
+async fn delete_waypoint(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> StatusCode {
+    let mut wp_store = state.waypoints.write().await;
+    if wp_store.remove(&id).is_some() {
+        StatusCode::NO_CONTENT
+    } else {
+        StatusCode::NOT_FOUND
+    }
+}
+
+/// Start HTTP server for waypoint management
+async fn start_http_server(state: Arc<AppState>) {
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
+    let app = Router::new()
+        .route("/waypoints", post(add_waypoints))
+        .route("/waypoints", get(get_waypoints))
+        .route("/waypoints/:id", delete(delete_waypoint))
+        .layer(cors)
+        .with_state(state);
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
+        .await
+        .expect("Failed to bind HTTP server");
+
+    println!("Starting HTTP REST API on port 8080");
+
+    axum::serve(listener, app)
+        .await
+        .expect("Failed to start HTTP server");
+}
+
 #[tokio::main]
 async fn main() {
     println!("=== Mock RBK Robot Server ===");
     println!("Starting mock robot server on all ports...\n");
 
-    let state = Arc::new(RwLock::new(RobotState::default()));
+    let robot_state = Arc::new(RwLock::new(RobotState::default()));
+    let waypoints = Arc::new(RwLock::new(HashMap::new()));
+
+    // Initialize with some default waypoints
+    {
+        let mut wp = waypoints.write().await;
+        wp.insert(
+            "home".to_string(),
+            Waypoint {
+                id: "home".to_string(),
+                x: 0.0,
+                y: 0.0,
+            },
+        );
+        wp.insert(
+            "station_a".to_string(),
+            Waypoint {
+                id: "station_a".to_string(),
+                x: 10.0,
+                y: 5.0,
+            },
+        );
+        wp.insert(
+            "station_b".to_string(),
+            Waypoint {
+                id: "station_b".to_string(),
+                x: -5.0,
+                y: 10.0,
+            },
+        );
+    }
+
+    let app_state = Arc::new(AppState {
+        robot: robot_state.clone(),
+        waypoints: waypoints.clone(),
+    });
 
     // Start behavior simulation
-    let state_clone = state.clone();
+    let state_clone = robot_state.clone();
     tokio::spawn(async move {
         simulate_robot_behavior(state_clone).await;
+    });
+
+    // Start HTTP server for waypoint management
+    let http_state = app_state.clone();
+    tokio::spawn(async move {
+        start_http_server(http_state).await;
     });
 
     // Start servers on all ports
@@ -752,7 +884,7 @@ async fn main() {
 
     for (port, name) in ports {
         println!("Starting {} on port {}", name, port);
-        let state = state.clone();
+        let state = robot_state.clone();
         let handle = tokio::spawn(async move {
             start_server(port, state).await;
         });
@@ -760,7 +892,11 @@ async fn main() {
     }
 
     println!("\n✓ All servers started successfully!");
-    println!("  Connect to localhost with seersdk-rs client");
+    println!("  RBK Protocol: Connect to localhost with seersdk-rs client");
+    println!("  HTTP REST API: http://localhost:8080");
+    println!("    - POST   /waypoints");
+    println!("    - GET    /waypoints");
+    println!("    - DELETE /waypoints/{{id}}");
     println!("  Press Ctrl+C to stop\n");
 
     // Wait for all servers

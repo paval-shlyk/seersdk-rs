@@ -186,6 +186,7 @@ cargo run --example mock_robot_server
 # - Port 19207: Config APIs (parameters, maps, etc.)
 # - Port 19208: Kernel APIs (shutdown, reboot)
 # - Port 19210: Peripheral APIs (jack, audio, I/O, etc.)
+# - Port 8080: HTTP REST API for waypoint management
 ```
 
 The mock server features:
@@ -193,6 +194,7 @@ The mock server features:
 - Realistic robot state simulation (battery drain, navigation progress, position updates)
 - Support for all major API endpoints
 - Concurrent client connections
+- **HTTP REST API for waypoint management** (see [WAYPOINT_MANAGEMENT.md](WAYPOINT_MANAGEMENT.md))
 
 ### TUI Client
 
@@ -208,6 +210,8 @@ cargo run --example tui_client -- 192.168.8.114
 
 Features:
 - Interactive command-line interface with ratatui
+- Vim-like navigation (j/k for scrolling, g/G for top/bottom)
+- Scrollable message history with visual indicators
 - Real-time message display
 - Support for common commands:
   - `battery` / `bat` / `1` - Query battery status
@@ -219,14 +223,29 @@ Features:
   - `resume` / `7` - Resume navigation
   - `jack load` / `8` - Load jack
   - `jack unload` / `9` - Unload jack
+  - **`wp list`** - List all waypoints
+  - **`wp add <id> <x> <y>`** - Add waypoint
+  - **`wp delete <id>`** - Delete waypoint
   - `help` - Show all available commands
   - `clear` - Clear message history
 
 Controls:
-- Type commands in the input field
-- Press `Enter` to send
-- Press `Esc` or `q` (in normal mode) to quit
-- Press `i` to enter editing mode (from normal mode)
+- **Normal Mode** (press `Esc` to enter):
+  - `i` - Enter editing mode
+  - `q` - Quit application
+  - `?` - Show help
+  - `c` - Clear screen
+  - `j`/`↓` - Scroll down
+  - `k`/`↑` - Scroll up
+  - `d`/`PgDn` - Page down
+  - `u`/`PgUp` - Page up
+  - `g`/`Home` - Go to top
+  - `G`/`End` - Go to bottom
+- **Editing Mode** (default):
+  - Type commands and press `Enter` to send
+  - `Esc` - Enter normal mode
+  - `Ctrl+j`/`Ctrl+k` - Scroll while typing
+  - `Ctrl+c` - Clear screen
 
 ### Test the Mock Server
 
