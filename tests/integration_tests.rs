@@ -16,7 +16,9 @@ static FIXTURE: OnceCell<MockServerFixture> = OnceCell::const_new();
 
 /// Initialize the mock server once for all tests
 async fn ensure_mock_server() {
-    FIXTURE.get_or_init(|| async { MockServerFixture::new().await });
+    FIXTURE
+        .get_or_init(|| async { MockServerFixture::new().await })
+        .await;
 }
 
 /// Helper function to create a test client
