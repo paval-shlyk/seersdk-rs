@@ -2,12 +2,12 @@
 name = "seersdk-rs"
 version = "1.0.0"
 edition = "2024"
-authors = ["Seer Robotics"]
+authors = ["Paval Shlyk"]
 description = "Rust SDK for RBK robot TCP communication"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/paval-shlyk/seersdk-rs"
-keywords = ["robotics", "tcp", "client", "rbk", "robokit", "seer"]
-categories = ["network-programming"]
+keywords = ["rbk", "robokit", "seer", "seer-sdk"]
+categories = ["network-programming", "robotics"]
 
 [dependencies]
 tokio = { version = "1.48", features = ["full"] }
