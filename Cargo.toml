@@ -27,3 +27,4 @@ reqwest = { version = "0.12", features = ["json"] }
 # Dependencies for examples
 ratatui = "0.29"
 crossterm = "0.28"
+ctor = "0.6.3"

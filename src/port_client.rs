@@ -65,6 +65,7 @@ impl RbkPortClient {
         result
     }
 
+    //fixme: not cancel-safe due to the timeout
     async fn do_request(
         &self,
         api_no: u16,

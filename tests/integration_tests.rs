@@ -7,16 +7,32 @@
 
 use seersdk_rs::*;
 use std::time::Duration;
-use tokio::sync::OnceCell;
+use tokio::sync::{Mutex, OnceCell};
 
 mod test_fixtures;
 use test_fixtures::MockServerFixture;
 
-static FIXTURE: OnceCell<MockServerFixture> = OnceCell::const_new();
+static FIXTURE: Mutex<OnceCell<MockServerFixture>> =
+    Mutex::const_new(OnceCell::const_new());
+
+#[ctor::dtor]
+fn shutdown_mock_server() {
+    let mut lock = FIXTURE.try_lock().expect("Failed to lock FIXTURE");
+
+    let Some(fixture) = lock.take() else {
+        return;
+    };
+
+    eprintln!("Shutting down mock server...");
+
+    drop(fixture);
+}
 
 /// Initialize the mock server once for all tests
 async fn ensure_mock_server() {
     FIXTURE
+        .lock()
+        .await
         .get_or_init(|| async { MockServerFixture::new().await })
         .await;
 }
