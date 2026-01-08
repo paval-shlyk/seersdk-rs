@@ -377,26 +377,28 @@ async fn handle_request(
         1020 => {
             // NavStatus
             let s = state.read().await;
-            
+
             // Build finished/unfinished paths based on task queue
             let finished_path: Vec<String> = if s.task_queue.is_empty() {
                 vec![]
             } else {
-                s.task_queue.iter()
+                s.task_queue
+                    .iter()
                     .take(s.current_task_index)
                     .map(|t| t.target.clone())
                     .collect()
             };
-            
+
             let unfinished_path: Vec<String> = if s.task_queue.is_empty() {
                 vec![]
             } else {
-                s.task_queue.iter()
+                s.task_queue
+                    .iter()
                     .skip(s.current_task_index + 1)
                     .map(|t| t.target.clone())
                     .collect()
             };
-            
+
             json!({
                 "task_status": s.nav_status,
                 "task_type": s.nav_type,
@@ -434,35 +436,94 @@ async fn handle_request(
             // TaskPackage
             let s = state.read().await;
             
-            // Build task status list
-            let task_status_list: Vec<serde_json::Value> = s.task_queue.iter().map(|t| {
-                json!({
-                    "task_id": t.task_id,
-                    "status": t.status
-                })
-            }).collect();
+            // Parse request body to get task_ids filter
+            let requested_task_ids: Option<Vec<String>> = if frame.body.is_empty() {
+                None // Field omitted - return most recent completed + all incomplete
+            } else {
+                serde_json::from_str::<serde_json::Value>(&frame.body)
+                    .ok()
+                    .and_then(|req| req.get("task_ids").cloned())
+                    .and_then(|ids| serde_json::from_value(ids).ok())
+            };
             
+            // Build task status list based on request
+            let task_status_list: Vec<serde_json::Value> = match requested_task_ids {
+                Some(ids) if ids.is_empty() => {
+                    // Empty array - return empty list
+                    vec![]
+                }
+                Some(ids) => {
+                    // Specific task_ids requested - filter to only those
+                    s.task_queue
+                        .iter()
+                        .filter(|t| ids.contains(&t.task_id))
+                        .map(|t| {
+                            json!({
+                                "task_id": t.task_id,
+                                "status": t.status
+                            })
+                        })
+                        .collect()
+                }
+                None => {
+                    // Field omitted - return most recent completed + all incomplete
+                    let mut tasks_to_return = Vec::new();
+                    let mut found_last_completed = false;
+                    
+                    // Iterate in reverse to find most recent completed task
+                    for task in s.task_queue.iter().rev() {
+                        if task.status == 4 && !found_last_completed {
+                            // Most recent completed task
+                            tasks_to_return.push(task);
+                            found_last_completed = true;
+                        } else if task.status != 4 {
+                            // All incomplete tasks (not completed)
+                            tasks_to_return.push(task);
+                        }
+                    }
+                    
+                    // Reverse to maintain original order
+                    tasks_to_return.reverse();
+                    tasks_to_return
+                        .into_iter()
+                        .map(|t| {
+                            json!({
+                                "task_id": t.task_id,
+                                "status": t.status
+                            })
+                        })
+                        .collect()
+                }
+            };
+
             // Calculate percentage: (completed_tasks + progress_in_current) / total_tasks
             let percentage = if s.task_queue.is_empty() {
                 0.0
             } else {
                 let total_tasks = s.task_queue.len() as f64;
                 let completed_tasks = s.current_task_index as f64;
-                
+
                 // Calculate progress within current task
-                let current_task_progress = if s.current_task_index < s.task_queue.len() && s.nav_status == 2 {
+                let current_task_progress = if s.current_task_index
+                    < s.task_queue.len()
+                    && s.nav_status == 2
+                {
                     let current_task = &s.task_queue[s.current_task_index];
                     let target_x = current_task.target_pos[0];
                     let target_y = current_task.target_pos[1];
                     let start_x = current_task.start_pos[0];
                     let start_y = current_task.start_pos[1];
-                    
+
                     // Total distance for this task
-                    let total_dist = ((target_x - start_x).powi(2) + (target_y - start_y).powi(2)).sqrt();
-                    
+                    let total_dist = ((target_x - start_x).powi(2)
+                        + (target_y - start_y).powi(2))
+                    .sqrt();
+
                     if total_dist > 0.01 {
                         // Distance covered
-                        let covered_dist = ((s.x - start_x).powi(2) + (s.y - start_y).powi(2)).sqrt();
+                        let covered_dist = ((s.x - start_x).powi(2)
+                            + (s.y - start_y).powi(2))
+                        .sqrt();
                         (covered_dist / total_dist).min(1.0)
                     } else {
                         1.0 // Already at target
@@ -473,12 +534,15 @@ async fn handle_request(
                 } else {
                     0.0
                 };
-                
-                ((completed_tasks + current_task_progress) / total_tasks).min(1.0)
+
+                ((completed_tasks + current_task_progress) / total_tasks)
+                    .min(1.0)
             };
-            
+
             // Calculate actual distance to current target
-            let distance = if s.current_task_index < s.task_queue.len() && s.nav_status == 2 {
+            let distance = if s.current_task_index < s.task_queue.len()
+                && s.nav_status == 2
+            {
                 let current_task = &s.task_queue[s.current_task_index];
                 let target_x = current_task.target_pos[0];
                 let target_y = current_task.target_pos[1];
@@ -488,11 +552,11 @@ async fn handle_request(
             } else {
                 0.0
             };
-            
+
             json!({
-                "closest_target": if s.task_queue.is_empty() { 
-                    "".to_string() 
-                } else { 
+                "closest_target": if s.task_queue.is_empty() {
+                    "".to_string()
+                } else {
                     s.target_id.clone()
                 },
                 "source_name": "SELF_POSITION",
@@ -599,20 +663,52 @@ async fn handle_request(
             .to_string()
         }
         3051 => {
-            // MoveToTarget
+            // MoveToTarget - Single task navigation
             let mut s = state.write().await;
+            let wp = waypoints.read().await;
 
             if let Ok(req) =
                 serde_json::from_str::<serde_json::Value>(&frame.body)
             {
                 if let Some(target) = req.get("id").and_then(|v| v.as_str()) {
-                    s.target_id = target.to_string();
+                    // Clear old task queue - starting new navigation
+                    s.task_queue.clear();
+                    s.current_task_index = 0;
+                    
+                    let start = req.get("source_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("SELF_POSITION");
+                    
+                    let task_id = req.get("task_id")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "single_task".to_string());
+                    
+                    // Get positions from waypoints
+                    let start_pos = if start == "SELF_POSITION" {
+                        [s.x, s.y, s.angle]
+                    } else {
+                        wp.get(start).map(|w| [w.x, w.y, 0.0]).unwrap_or([s.x, s.y, s.angle])
+                    };
+                    
+                    let target_pos = wp.get(target)
+                        .map(|w| [w.x, w.y, 0.0])
+                        .unwrap_or([start_pos[0] + 5.0, start_pos[1] + 5.0, 0.0]);
+                    
+                    // Create single task
+                    s.task_queue.push(NavTask {
+                        task_id,
+                        start: start.to_string(),
+                        target: target.to_string(),
+                        start_pos,
+                        target_pos,
+                        status: 2, // Running
+                    });
+                    
                     s.nav_status = 2; // Running
                     s.nav_type = 3; // Path nav
-
-                    // Simulate moving towards target (mock position update)
-                    s.x += 0.1;
-                    s.y += 0.1;
+                    s.target_id = target.to_string();
+                    s.target_point = target_pos;
                 }
             }
 
@@ -627,33 +723,47 @@ async fn handle_request(
             // MoveToTargetList
             let mut s = state.write().await;
             let wp = waypoints.read().await;
-            
-            if let Ok(req) = serde_json::from_str::<serde_json::Value>(&frame.body) {
-                if let Some(task_list) = req.get("move_task_list").and_then(|v| v.as_array()) {
+
+            if let Ok(req) =
+                serde_json::from_str::<serde_json::Value>(&frame.body)
+            {
+                if let Some(task_list) =
+                    req.get("move_task_list").and_then(|v| v.as_array())
+                {
                     // Clear old task queue only when starting new navigation
                     s.task_queue.clear();
                     s.current_task_index = 0;
-                    
+
                     // Parse each task in the list
                     for (idx, task) in task_list.iter().enumerate() {
-                        let target = task.get("id").and_then(|v| v.as_str()).unwrap_or("");
-                        let start = task.get("source_id").and_then(|v| v.as_str()).unwrap_or("SELF_POSITION");
-                        let task_id = task.get("task_id")
+                        let target = task
+                            .get("id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let start = task
+                            .get("source_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("SELF_POSITION");
+                        let task_id = task
+                            .get("task_id")
                             .and_then(|v| v.as_str())
                             .map(|s| s.to_string())
                             .unwrap_or_else(|| format!("task_{}", idx));
-                        
+
                         // Get positions from waypoints
                         let start_pos = if start == "SELF_POSITION" {
                             [s.x, s.y, s.angle]
                         } else {
-                            wp.get(start).map(|w| [w.x, w.y, 0.0]).unwrap_or([s.x, s.y, s.angle])
+                            wp.get(start)
+                                .map(|w| [w.x, w.y, 0.0])
+                                .unwrap_or([s.x, s.y, s.angle])
                         };
-                        
-                        let target_pos = wp.get(target)
-                            .map(|w| [w.x, w.y, 0.0])
-                            .unwrap_or([start_pos[0] + 5.0, start_pos[1] + 5.0, 0.0]);
-                        
+
+                        let target_pos =
+                            wp.get(target).map(|w| [w.x, w.y, 0.0]).unwrap_or(
+                                [start_pos[0] + 5.0, start_pos[1] + 5.0, 0.0],
+                            );
+
                         s.task_queue.push(NavTask {
                             task_id,
                             start: start.to_string(),
@@ -663,7 +773,7 @@ async fn handle_request(
                             status: if idx == 0 { 2 } else { 1 }, // First task running, others waiting
                         });
                     }
-                    
+
                     if !s.task_queue.is_empty() {
                         s.nav_status = 2; // Running
                         s.nav_type = 3; // Path nav
@@ -840,7 +950,8 @@ async fn handle_client(
                     let api_no = frame.api_no;
                     let flow_no = frame.flow_no;
                     let response_body =
-                        handle_request(state.clone(), waypoints.clone(), frame).await;
+                        handle_request(state.clone(), waypoints.clone(), frame)
+                            .await;
                     let response_bytes =
                         encode_response(api_no, &response_body, flow_no);
 
@@ -899,7 +1010,7 @@ async fn start_server(
 /// Background task to simulate robot state changes
 async fn simulate_robot_behavior(state: Arc<RwLock<RobotState>>) {
     let mut interval =
-        tokio::time::interval(tokio::time::Duration::from_millis(500));
+        tokio::time::interval(tokio::time::Duration::from_millis(50));
 
     loop {
         interval.tick().await;
@@ -912,28 +1023,31 @@ async fn simulate_robot_behavior(state: Arc<RwLock<RobotState>>) {
         }
 
         // Simulate navigation progress for task queue
-        if s.nav_status == 2 && !s.task_queue.is_empty() && s.current_task_index < s.task_queue.len() {
+        if s.nav_status == 2
+            && !s.task_queue.is_empty()
+            && s.current_task_index < s.task_queue.len()
+        {
             let current_idx = s.current_task_index;
             let current_task = &s.task_queue[current_idx];
             let target_x = current_task.target_pos[0];
             let target_y = current_task.target_pos[1];
             let target_angle = current_task.target_pos[2];
-            
+
             // Calculate distance to target
             let dx = target_x - s.x;
             let dy = target_y - s.y;
             let distance = (dx * dx + dy * dy).sqrt();
-            
+
             // Movement speed: 0.1 units per tick (0.5s)
             let speed = 0.1;
-            
+
             if distance > 0.05 {
                 // Move towards target
                 let move_ratio = speed / distance;
                 s.x += dx * move_ratio;
                 s.y += dy * move_ratio;
                 s.mileage += speed;
-                
+
                 // Update task status
                 s.task_queue[current_idx].status = 2; // Running
             } else {
@@ -942,19 +1056,21 @@ async fn simulate_robot_behavior(state: Arc<RwLock<RobotState>>) {
                 s.y = target_y;
                 s.angle = target_angle;
                 s.task_queue[current_idx].status = 4; // Completed
-                
+
                 // Move to next task
                 s.current_task_index += 1;
                 let next_idx = s.current_task_index;
-                
+
                 if next_idx < s.task_queue.len() {
                     // Start next task
                     s.task_queue[next_idx].status = 2; // Running
                     s.target_id = s.task_queue[next_idx].target.clone();
                     s.target_point = s.task_queue[next_idx].target_pos;
-                    println!("Moving to next task: {} -> {}", 
-                             s.task_queue[next_idx].start,
-                             s.task_queue[next_idx].target);
+                    println!(
+                        "Moving to next task: {} -> {}",
+                        s.task_queue[next_idx].start,
+                        s.task_queue[next_idx].target
+                    );
                 } else {
                     // All tasks completed
                     s.nav_status = 4; // Completed
