@@ -53,6 +53,9 @@ impl RbkPortClient {
     ) -> RbkResult<String> {
         // Try up to 3 times with automatic reconnection
         const MAX_RETRIES: usize = 3;
+        
+        debug_assert!(MAX_RETRIES > 0, "MAX_RETRIES must be greater than 0");
+        
         let mut last_error = None;
 
         for attempt in 0..MAX_RETRIES {
@@ -73,7 +76,7 @@ impl RbkPortClient {
                     
                     // If not the last attempt, wait briefly before retry with exponential backoff
                     if attempt + 1 < MAX_RETRIES {
-                        let delay_ms = 100 * (1 << attempt); // 100ms, 200ms, 400ms
+                        let delay_ms = 100u64.saturating_mul(1 << attempt); // 100ms, 200ms, 400ms
                         tokio::time::sleep(Duration::from_millis(delay_ms)).await;
                     }
                 }
