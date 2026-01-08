@@ -442,6 +442,53 @@ async fn handle_request(
                 })
             }).collect();
             
+            // Calculate percentage: (completed_tasks + progress_in_current) / total_tasks
+            let percentage = if s.task_queue.is_empty() {
+                0.0
+            } else {
+                let total_tasks = s.task_queue.len() as f64;
+                let completed_tasks = s.current_task_index as f64;
+                
+                // Calculate progress within current task
+                let current_task_progress = if s.current_task_index < s.task_queue.len() && s.nav_status == 2 {
+                    let current_task = &s.task_queue[s.current_task_index];
+                    let target_x = current_task.target_pos[0];
+                    let target_y = current_task.target_pos[1];
+                    let start_x = current_task.start_pos[0];
+                    let start_y = current_task.start_pos[1];
+                    
+                    // Total distance for this task
+                    let total_dist = ((target_x - start_x).powi(2) + (target_y - start_y).powi(2)).sqrt();
+                    
+                    if total_dist > 0.01 {
+                        // Distance covered
+                        let covered_dist = ((s.x - start_x).powi(2) + (s.y - start_y).powi(2)).sqrt();
+                        (covered_dist / total_dist).min(1.0)
+                    } else {
+                        1.0 // Already at target
+                    }
+                } else if s.nav_status == 4 {
+                    // All completed
+                    1.0
+                } else {
+                    0.0
+                };
+                
+                ((completed_tasks + current_task_progress) / total_tasks).min(1.0)
+            };
+            
+            // Calculate actual distance to current target
+            let distance = if s.current_task_index < s.task_queue.len() && s.nav_status == 2 {
+                let current_task = &s.task_queue[s.current_task_index];
+                let target_x = current_task.target_pos[0];
+                let target_y = current_task.target_pos[1];
+                let dx = target_x - s.x;
+                let dy = target_y - s.y;
+                (dx * dx + dy * dy).sqrt()
+            } else {
+                0.0
+            };
+            
             json!({
                 "closest_target": if s.task_queue.is_empty() { 
                     "".to_string() 
@@ -450,8 +497,8 @@ async fn handle_request(
                 },
                 "source_name": "SELF_POSITION",
                 "target_name": s.target_id,
-                "percentage": if s.nav_status == 2 { 0.5 } else { 0.0 },
-                "distance": if s.nav_status == 2 { 2.5 } else { 0.0 },
+                "percentage": percentage,
+                "distance": distance,
                 "task_status_list": task_status_list,
                 "info": "Navigation in progress",
                 "ret_code": 0,
@@ -477,8 +524,7 @@ async fn handle_request(
             // Stop
             let mut s = state.write().await;
             s.nav_status = 6; // Canceled
-            s.task_queue.clear();
-            s.current_task_index = 0;
+            // Don't clear task queue - keep history until new navigation starts
             json!({
                 "ret_code": 0,
                 "err_msg": "Stopped successfully"
@@ -545,8 +591,7 @@ async fn handle_request(
             // Cancel navigation
             let mut s = state.write().await;
             s.nav_status = 6; // Canceled
-            s.task_queue.clear();
-            s.current_task_index = 0;
+            // Don't clear task queue - keep history until new navigation starts
             json!({
                 "ret_code": 0,
                 "err_msg": "Navigation canceled"
@@ -585,6 +630,7 @@ async fn handle_request(
             
             if let Ok(req) = serde_json::from_str::<serde_json::Value>(&frame.body) {
                 if let Some(task_list) = req.get("move_task_list").and_then(|v| v.as_array()) {
+                    // Clear old task queue only when starting new navigation
                     s.task_queue.clear();
                     s.current_task_index = 0;
                     
