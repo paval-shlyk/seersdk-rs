@@ -435,66 +435,68 @@ async fn handle_request(
         1110 => {
             // TaskPackage
             let s = state.read().await;
-            
+
             // Parse request body to get task_ids filter
-            let requested_task_ids: Option<Vec<String>> = if frame.body.is_empty() {
-                None // Field omitted - return most recent completed + all incomplete
-            } else {
-                serde_json::from_str::<serde_json::Value>(&frame.body)
-                    .ok()
-                    .and_then(|req| req.get("task_ids").cloned())
-                    .and_then(|ids| serde_json::from_value(ids).ok())
-            };
-            
+            let requested_task_ids: Option<Vec<String>> =
+                if frame.body.is_empty() {
+                    None // Field omitted - return most recent completed + all incomplete
+                } else {
+                    serde_json::from_str::<serde_json::Value>(&frame.body)
+                        .ok()
+                        .and_then(|req| req.get("task_ids").cloned())
+                        .and_then(|ids| serde_json::from_value(ids).ok())
+                };
+
             // Build task status list based on request
-            let task_status_list: Vec<serde_json::Value> = match requested_task_ids {
-                Some(ids) if ids.is_empty() => {
-                    // Empty array - return empty list
-                    vec![]
-                }
-                Some(ids) => {
-                    // Specific task_ids requested - filter to only those
-                    s.task_queue
-                        .iter()
-                        .filter(|t| ids.contains(&t.task_id))
-                        .map(|t| {
-                            json!({
-                                "task_id": t.task_id,
-                                "status": t.status
-                            })
-                        })
-                        .collect()
-                }
-                None => {
-                    // Field omitted - return most recent completed + all incomplete
-                    let mut tasks_to_return = Vec::new();
-                    let mut found_last_completed = false;
-                    
-                    // Iterate in reverse to find most recent completed task
-                    for task in s.task_queue.iter().rev() {
-                        if task.status == 4 && !found_last_completed {
-                            // Most recent completed task
-                            tasks_to_return.push(task);
-                            found_last_completed = true;
-                        } else if task.status != 4 {
-                            // All incomplete tasks (not completed)
-                            tasks_to_return.push(task);
-                        }
+            let task_status_list: Vec<serde_json::Value> =
+                match requested_task_ids {
+                    Some(ids) if ids.is_empty() => {
+                        // Empty array - return empty list
+                        vec![]
                     }
-                    
-                    // Reverse to maintain original order
-                    tasks_to_return.reverse();
-                    tasks_to_return
-                        .into_iter()
-                        .map(|t| {
-                            json!({
-                                "task_id": t.task_id,
-                                "status": t.status
+                    Some(ids) => {
+                        // Specific task_ids requested - filter to only those
+                        s.task_queue
+                            .iter()
+                            .filter(|t| ids.contains(&t.task_id))
+                            .map(|t| {
+                                json!({
+                                    "task_id": t.task_id,
+                                    "status": t.status
+                                })
                             })
-                        })
-                        .collect()
-                }
-            };
+                            .collect()
+                    }
+                    None => {
+                        // Field omitted - return most recent completed + all incomplete
+                        let mut tasks_to_return = Vec::new();
+                        let mut found_last_completed = false;
+
+                        // Iterate in reverse to find most recent completed task
+                        for task in s.task_queue.iter().rev() {
+                            if task.status == 4 && !found_last_completed {
+                                // Most recent completed task
+                                tasks_to_return.push(task);
+                                found_last_completed = true;
+                            } else if task.status != 4 {
+                                // All incomplete tasks (not completed)
+                                tasks_to_return.push(task);
+                            }
+                        }
+
+                        // Reverse to maintain original order
+                        tasks_to_return.reverse();
+                        tasks_to_return
+                            .into_iter()
+                            .map(|t| {
+                                json!({
+                                    "task_id": t.task_id,
+                                    "status": t.status
+                                })
+                            })
+                            .collect()
+                    }
+                };
 
             // Calculate percentage: (completed_tasks + progress_in_current) / total_tasks
             let percentage = if s.task_queue.is_empty() {
@@ -674,27 +676,34 @@ async fn handle_request(
                     // Clear old task queue - starting new navigation
                     s.task_queue.clear();
                     s.current_task_index = 0;
-                    
-                    let start = req.get("source_id")
+
+                    let start = req
+                        .get("source_id")
                         .and_then(|v| v.as_str())
                         .unwrap_or("SELF_POSITION");
-                    
-                    let task_id = req.get("task_id")
+
+                    let task_id = req
+                        .get("task_id")
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string())
                         .unwrap_or_else(|| "single_task".to_string());
-                    
+
                     // Get positions from waypoints
                     let start_pos = if start == "SELF_POSITION" {
                         [s.x, s.y, s.angle]
                     } else {
-                        wp.get(start).map(|w| [w.x, w.y, 0.0]).unwrap_or([s.x, s.y, s.angle])
+                        wp.get(start)
+                            .map(|w| [w.x, w.y, 0.0])
+                            .unwrap_or([s.x, s.y, s.angle])
                     };
-                    
-                    let target_pos = wp.get(target)
-                        .map(|w| [w.x, w.y, 0.0])
-                        .unwrap_or([start_pos[0] + 5.0, start_pos[1] + 5.0, 0.0]);
-                    
+
+                    let target_pos =
+                        wp.get(target).map(|w| [w.x, w.y, 0.0]).unwrap_or([
+                            start_pos[0] + 5.0,
+                            start_pos[1] + 5.0,
+                            0.0,
+                        ]);
+
                     // Create single task
                     s.task_queue.push(NavTask {
                         task_id,
@@ -704,7 +713,7 @@ async fn handle_request(
                         target_pos,
                         status: 2, // Running
                     });
-                    
+
                     s.nav_status = 2; // Running
                     s.nav_type = 3; // Path nav
                     s.target_id = target.to_string();
