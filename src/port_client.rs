@@ -71,16 +71,17 @@ impl RbkPortClient {
                     
                     last_error = Some(e);
                     
-                    // If not the last attempt, wait briefly before retry
+                    // If not the last attempt, wait briefly before retry with exponential backoff
                     if attempt + 1 < MAX_RETRIES {
-                        tokio::time::sleep(Duration::from_millis(100)).await;
+                        let delay_ms = 100 * (1 << attempt); // 100ms, 200ms, 400ms
+                        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
                     }
                 }
             }
         }
 
         // Return the last error after all retries exhausted
-        Err(last_error.unwrap())
+        Err(last_error.expect("at least one retry attempt should have occurred"))
     }
 
     //fixme: not cancel-safe due to the timeout
