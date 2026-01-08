@@ -4,6 +4,18 @@
 //! with mock navigation logic. It implements all API endpoints across
 //! multiple ports as per the RBK protocol specification.
 //!
+//! ## Navigation Task Emulation
+//!
+//! The server now fully supports the MoveToTargetList API (3066) with realistic task simulation:
+//! - Parses navigation task lists and creates a task queue
+//! - Simulates robot movement from start to target for each task
+//! - Updates position smoothly over time (0.1 units per 500ms)
+//! - Tracks individual task status (waiting, running, completed, failed)
+//! - Reports progress via NavStatus (API 1020) and TaskPackage (API 1110)
+//! - Supports pause (3001), resume (3002), and cancel (3003) operations
+//!
+//! ## HTTP REST API
+//!
 //! Additionally, it provides HTTP REST API for waypoint management:
 //! - POST /waypoints: Add waypoints (JSON array with id, x, y)
 //! - GET /waypoints: Retrieve all waypoints
@@ -16,13 +28,23 @@
 //! ```
 //!
 //! The server will listen on:
-//! - Port 19204: State APIs
-//! - Port 19205: Control APIs
-//! - Port 19206: Navigation APIs
+//! - Port 19204: State APIs (including NavStatus 1020, TaskPackage 1110)
+//! - Port 19205: Control APIs (Stop 2000)
+//! - Port 19206: Navigation APIs (MoveToTargetList 3066, Pause 3001, Resume 3002, Cancel 3003)
 //! - Port 19207: Config APIs
 //! - Port 19208: Kernel APIs
 //! - Port 19210: Peripheral APIs
 //! - Port 8080: HTTP REST API for waypoints
+//!
+//! # Testing
+//!
+//! Run the test scripts to verify navigation functionality:
+//! ```bash
+//! ./test_tasks.sh
+//! ./test_navigation_states.sh
+//! ```
+//!
+//! See TASK_NAVIGATION.md for detailed documentation.
 
 use axum::{
     Json, Router,
@@ -54,10 +76,20 @@ struct Waypoint {
 }
 
 /// Shared application state
-#[allow(dead_code)]
 struct AppState {
     robot: Arc<RwLock<RobotState>>,
     waypoints: Arc<RwLock<HashMap<String, Waypoint>>>,
+}
+
+/// Navigation task item
+#[derive(Debug, Clone)]
+struct NavTask {
+    task_id: String,
+    start: String,
+    target: String,
+    start_pos: [f64; 3],
+    target_pos: [f64; 3],
+    status: u32, // 1=waiting, 2=running, 4=completed, 5=failed
 }
 
 /// Shared robot state
@@ -90,6 +122,10 @@ struct RobotState {
     nav_type: u32,
     target_id: String,
     target_point: [f64; 3],
+
+    // Task queue for MoveToTargetList
+    task_queue: Vec<NavTask>,
+    current_task_index: usize,
 
     // Jack
     jack_height: f64,
@@ -129,6 +165,9 @@ impl Default for RobotState {
             nav_type: 0,
             target_id: String::new(),
             target_point: [0.0, 0.0, 0.0],
+
+            task_queue: Vec::new(),
+            current_task_index: 0,
 
             jack_height: 0.0,
             jack_has_payload: false,
@@ -250,6 +289,7 @@ fn get_timestamp() -> String {
 /// Handle API request and generate response
 async fn handle_request(
     state: Arc<RwLock<RobotState>>,
+    waypoints: Arc<RwLock<HashMap<String, Waypoint>>>,
     frame: RbkFrame,
 ) -> String {
     let api_no = frame.api_no;
@@ -337,13 +377,33 @@ async fn handle_request(
         1020 => {
             // NavStatus
             let s = state.read().await;
+            
+            // Build finished/unfinished paths based on task queue
+            let finished_path: Vec<String> = if s.task_queue.is_empty() {
+                vec![]
+            } else {
+                s.task_queue.iter()
+                    .take(s.current_task_index)
+                    .map(|t| t.target.clone())
+                    .collect()
+            };
+            
+            let unfinished_path: Vec<String> = if s.task_queue.is_empty() {
+                vec![]
+            } else {
+                s.task_queue.iter()
+                    .skip(s.current_task_index + 1)
+                    .map(|t| t.target.clone())
+                    .collect()
+            };
+            
             json!({
                 "task_status": s.nav_status,
                 "task_type": s.nav_type,
                 "target_id": s.target_id,
                 "target_point": s.target_point,
-                "finished_path": [],
-                "unfinished_path": [],
+                "finished_path": finished_path,
+                "unfinished_path": unfinished_path,
                 "move_status_info": "Mock navigation running",
                 "ret_code": 0,
                 "create_on": get_timestamp(),
@@ -373,13 +433,26 @@ async fn handle_request(
         1110 => {
             // TaskPackage
             let s = state.read().await;
+            
+            // Build task status list
+            let task_status_list: Vec<serde_json::Value> = s.task_queue.iter().map(|t| {
+                json!({
+                    "task_id": t.task_id,
+                    "status": t.status
+                })
+            }).collect();
+            
             json!({
-                "closest_target": "station_1",
+                "closest_target": if s.task_queue.is_empty() { 
+                    "".to_string() 
+                } else { 
+                    s.target_id.clone()
+                },
                 "source_name": "SELF_POSITION",
                 "target_name": s.target_id,
-                "percentage": 0.5,
-                "distance": 2.5,
-                "task_status_list": [],
+                "percentage": if s.nav_status == 2 { 0.5 } else { 0.0 },
+                "distance": if s.nav_status == 2 { 2.5 } else { 0.0 },
+                "task_status_list": task_status_list,
                 "info": "Navigation in progress",
                 "ret_code": 0,
                 "err_msg": "",
@@ -404,6 +477,8 @@ async fn handle_request(
             // Stop
             let mut s = state.write().await;
             s.nav_status = 6; // Canceled
+            s.task_queue.clear();
+            s.current_task_index = 0;
             json!({
                 "ret_code": 0,
                 "err_msg": "Stopped successfully"
@@ -470,6 +545,8 @@ async fn handle_request(
             // Cancel navigation
             let mut s = state.write().await;
             s.nav_status = 6; // Canceled
+            s.task_queue.clear();
+            s.current_task_index = 0;
             json!({
                 "ret_code": 0,
                 "err_msg": "Navigation canceled"
@@ -504,8 +581,51 @@ async fn handle_request(
         3066 => {
             // MoveToTargetList
             let mut s = state.write().await;
-            s.nav_status = 2; // Running
-            s.nav_type = 3;
+            let wp = waypoints.read().await;
+            
+            if let Ok(req) = serde_json::from_str::<serde_json::Value>(&frame.body) {
+                if let Some(task_list) = req.get("move_task_list").and_then(|v| v.as_array()) {
+                    s.task_queue.clear();
+                    s.current_task_index = 0;
+                    
+                    // Parse each task in the list
+                    for (idx, task) in task_list.iter().enumerate() {
+                        let target = task.get("id").and_then(|v| v.as_str()).unwrap_or("");
+                        let start = task.get("source_id").and_then(|v| v.as_str()).unwrap_or("SELF_POSITION");
+                        let task_id = task.get("task_id")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                            .unwrap_or_else(|| format!("task_{}", idx));
+                        
+                        // Get positions from waypoints
+                        let start_pos = if start == "SELF_POSITION" {
+                            [s.x, s.y, s.angle]
+                        } else {
+                            wp.get(start).map(|w| [w.x, w.y, 0.0]).unwrap_or([s.x, s.y, s.angle])
+                        };
+                        
+                        let target_pos = wp.get(target)
+                            .map(|w| [w.x, w.y, 0.0])
+                            .unwrap_or([start_pos[0] + 5.0, start_pos[1] + 5.0, 0.0]);
+                        
+                        s.task_queue.push(NavTask {
+                            task_id,
+                            start: start.to_string(),
+                            target: target.to_string(),
+                            start_pos,
+                            target_pos,
+                            status: if idx == 0 { 2 } else { 1 }, // First task running, others waiting
+                        });
+                    }
+                    
+                    if !s.task_queue.is_empty() {
+                        s.nav_status = 2; // Running
+                        s.nav_type = 3; // Path nav
+                        s.target_id = s.task_queue[0].target.clone();
+                        s.target_point = s.task_queue[0].target_pos;
+                    }
+                }
+            }
 
             json!({
                 "ret_code": 0,
@@ -647,6 +767,7 @@ async fn handle_request(
 async fn handle_client(
     mut stream: TcpStream,
     state: Arc<RwLock<RobotState>>,
+    waypoints: Arc<RwLock<HashMap<String, Waypoint>>>,
     port: u16,
 ) {
     println!("New connection on port {}", port);
@@ -673,7 +794,7 @@ async fn handle_client(
                     let api_no = frame.api_no;
                     let flow_no = frame.flow_no;
                     let response_body =
-                        handle_request(state.clone(), frame).await;
+                        handle_request(state.clone(), waypoints.clone(), frame).await;
                     let response_bytes =
                         encode_response(api_no, &response_body, flow_no);
 
@@ -681,6 +802,8 @@ async fn handle_client(
                         eprintln!("Failed to write response: {}", e);
                         break;
                     }
+
+                    stream.flush().await.unwrap();
                 }
             }
             Err(e) => {
@@ -692,7 +815,11 @@ async fn handle_client(
 }
 
 /// Start a server on a specific port
-async fn start_server(port: u16, state: Arc<RwLock<RobotState>>) {
+async fn start_server(
+    port: u16,
+    state: Arc<RwLock<RobotState>>,
+    waypoints: Arc<RwLock<HashMap<String, Waypoint>>>,
+) {
     let addr = format!("0.0.0.0:{}", port);
     let listener = match TcpListener::bind(&addr).await {
         Ok(l) => l,
@@ -708,8 +835,9 @@ async fn start_server(port: u16, state: Arc<RwLock<RobotState>>) {
         match listener.accept().await {
             Ok((stream, _addr)) => {
                 let state = state.clone();
+                let waypoints = waypoints.clone();
                 tokio::spawn(async move {
-                    handle_client(stream, state, port).await;
+                    handle_client(stream, state, waypoints, port).await;
                 });
             }
             Err(e) => {
@@ -725,7 +853,7 @@ async fn start_server(port: u16, state: Arc<RwLock<RobotState>>) {
 /// Background task to simulate robot state changes
 async fn simulate_robot_behavior(state: Arc<RwLock<RobotState>>) {
     let mut interval =
-        tokio::time::interval(tokio::time::Duration::from_secs(1));
+        tokio::time::interval(tokio::time::Duration::from_millis(500));
 
     loop {
         interval.tick().await;
@@ -734,24 +862,63 @@ async fn simulate_robot_behavior(state: Arc<RwLock<RobotState>>) {
 
         // Simulate battery drain
         if !s.charging && s.battery_level > 0.1 {
-            s.battery_level -= 0.0001;
+            s.battery_level -= 0.00005;
         }
 
-        // Simulate navigation progress
-        if s.nav_status == 2 {
-            // Running
-            s.x += 0.01;
-            s.y += 0.01;
-            s.mileage += 0.01;
-
-            // Random completion
-            if s.mileage > 1250.0 {
-                s.nav_status = 4; // Completed
+        // Simulate navigation progress for task queue
+        if s.nav_status == 2 && !s.task_queue.is_empty() && s.current_task_index < s.task_queue.len() {
+            let current_idx = s.current_task_index;
+            let current_task = &s.task_queue[current_idx];
+            let target_x = current_task.target_pos[0];
+            let target_y = current_task.target_pos[1];
+            let target_angle = current_task.target_pos[2];
+            
+            // Calculate distance to target
+            let dx = target_x - s.x;
+            let dy = target_y - s.y;
+            let distance = (dx * dx + dy * dy).sqrt();
+            
+            // Movement speed: 0.1 units per tick (0.5s)
+            let speed = 0.1;
+            
+            if distance > 0.05 {
+                // Move towards target
+                let move_ratio = speed / distance;
+                s.x += dx * move_ratio;
+                s.y += dy * move_ratio;
+                s.mileage += speed;
+                
+                // Update task status
+                s.task_queue[current_idx].status = 2; // Running
+            } else {
+                // Reached target - complete current task
+                s.x = target_x;
+                s.y = target_y;
+                s.angle = target_angle;
+                s.task_queue[current_idx].status = 4; // Completed
+                
+                // Move to next task
+                s.current_task_index += 1;
+                let next_idx = s.current_task_index;
+                
+                if next_idx < s.task_queue.len() {
+                    // Start next task
+                    s.task_queue[next_idx].status = 2; // Running
+                    s.target_id = s.task_queue[next_idx].target.clone();
+                    s.target_point = s.task_queue[next_idx].target_pos;
+                    println!("Moving to next task: {} -> {}", 
+                             s.task_queue[next_idx].start,
+                             s.task_queue[next_idx].target);
+                } else {
+                    // All tasks completed
+                    s.nav_status = 4; // Completed
+                    println!("All navigation tasks completed!");
+                }
             }
         }
 
         // Update total time
-        s.total_time += 1000.0;
+        s.total_time += 500.0;
     }
 }
 
@@ -885,8 +1052,9 @@ async fn main() {
     for (port, name) in ports {
         println!("Starting {} on port {}", name, port);
         let state = robot_state.clone();
+        let wp = waypoints.clone();
         let handle = tokio::spawn(async move {
-            start_server(port, state).await;
+            start_server(port, state, wp).await;
         });
         handles.push(handle);
     }
