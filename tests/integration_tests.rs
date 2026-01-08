@@ -405,3 +405,32 @@ async fn test_designed_path_navigation() {
         response.err()
     );
 }
+
+#[tokio::test]
+async fn test_automatic_reconnection() {
+    let client = create_test_client().await;
+
+    // First successful request
+    let request1 = BatteryStatusRequest::new();
+    let response1 = client.request(request1, Duration::from_secs(5)).await;
+    assert!(
+        response1.is_ok(),
+        "First request failed: {:?}",
+        response1.err()
+    );
+
+    // The mock server will close connections, which should trigger reconnection
+    // Make multiple requests to test the automatic reconnection behavior
+    for i in 0..3 {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        
+        let request = CommonInfoRequest::new();
+        let response = client.request(request, Duration::from_secs(5)).await;
+        assert!(
+            response.is_ok(),
+            "Reconnection test attempt {} failed: {:?}",
+            i + 1,
+            response.err()
+        );
+    }
+}

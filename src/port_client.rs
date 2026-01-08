@@ -51,18 +51,36 @@ impl RbkPortClient {
         req_str: &str,
         timeout: Duration,
     ) -> RbkResult<String> {
-        let result = self.do_request(api_no, req_str, timeout).await;
+        // Try up to 3 times with automatic reconnection
+        const MAX_RETRIES: usize = 3;
+        let mut last_error = None;
 
-        // Reset on error
-        if let Err(ref e) = result {
-            debug!(
-                "Request failed (API {}), resetting client: {:?}",
-                api_no, e
-            );
-            self.reset().await;
+        for attempt in 0..MAX_RETRIES {
+            let result = self.do_request(api_no, req_str, timeout).await;
+
+            match result {
+                Ok(response) => return Ok(response),
+                Err(e) => {
+                    debug!(
+                        "Request failed (API {}, attempt {}/{}): {:?}",
+                        api_no, attempt + 1, MAX_RETRIES, e
+                    );
+                    
+                    // Reset connection on error
+                    self.reset().await;
+                    
+                    last_error = Some(e);
+                    
+                    // If not the last attempt, wait briefly before retry
+                    if attempt + 1 < MAX_RETRIES {
+                        tokio::time::sleep(Duration::from_millis(100)).await;
+                    }
+                }
+            }
         }
 
-        result
+        // Return the last error after all retries exhausted
+        Err(last_error.unwrap())
     }
 
     //fixme: not cancel-safe due to the timeout
@@ -74,12 +92,8 @@ impl RbkPortClient {
     ) -> RbkResult<String> {
         let mut state = self.state.lock().await;
 
-        if state.disposed {
-            return Err(RbkError::Disposed);
-        }
-
-        // Ensure connection
-        if state.connection.is_none() {
+        // Ensure connection - will reconnect if disposed or disconnected
+        if state.connection.is_none() || state.disposed {
             drop(state);
             self.connect().await?;
             state = self.state.lock().await;
@@ -106,6 +120,7 @@ impl RbkPortClient {
                 notify.notified().await;
                 let mut state = self.state.lock().await;
 
+                // If disposed during wait, return error to trigger reconnection
                 if state.disposed {
                     return Err(RbkError::Disposed);
                 }
