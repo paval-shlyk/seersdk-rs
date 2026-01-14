@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::StatusCode;
+
 #[derive(Error, Debug)]
 pub enum RbkError {
     #[error("IO error: {0}")]
@@ -25,6 +27,15 @@ pub enum RbkError {
 
     #[error("Parse error: {0}")]
     ParseError(String),
+
+    #[error(
+        "Bad response from robot: code={code:?}, message={message}, timestamp={timestamp:?}"
+    )]
+    BadResponse {
+        code: StatusCode,
+        message: String,
+        timestamp: Option<String>,
+    },
 }
 
 pub type RbkResult<T> = Result<T, RbkError>;

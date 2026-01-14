@@ -1,4 +1,4 @@
-use crate::{PointId, TaskId};
+use crate::{PointId, RbkError, TaskId};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct StatusMessage {
@@ -12,12 +12,16 @@ pub struct StatusMessage {
 
 impl StatusMessage {
     //fixme: to weird impl
-    pub fn into_result(self) -> Result<(), StatusMessage> {
+    pub fn into_result(self) -> Result<(), RbkError> {
         if self.code == StatusCode::Success {
-            Ok(())
-        } else {
-            Err(self)
+            return Ok(());
         }
+
+        Err(RbkError::BadResponse {
+            code: self.code,
+            message: self.message,
+            timestamp: self.timestamp,
+        })
     }
 }
 
